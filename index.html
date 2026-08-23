@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>제자반 암송구절</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- 1. 시작 화면 -->
+<section id="screen-start" class="screen active hero-bold">
+  <div class="hero-cursor" id="hero-cursor" aria-hidden="true"></div>
+  <div class="hero-glow" aria-hidden="true"></div>
+  <span class="hero-particle" style="top:22%; left:16%; animation-delay:0s;"></span>
+  <span class="hero-particle" style="top:14%; left:78%; animation-delay:0.6s;"></span>
+  <span class="hero-particle" style="top:66%; left:10%; animation-delay:1.2s;"></span>
+  <span class="hero-particle" style="top:72%; left:84%; animation-delay:1.8s;"></span>
+  <span class="hero-particle" style="top:40%; left:92%; animation-delay:2.4s;"></span>
+  <span class="hero-particle" style="top:85%; left:46%; animation-delay:0.3s;"></span>
+
+  <div class="hero-content">
+    <h1 class="hero-title-en">Discipleship Class<br>Recitation Verses</h1>
+    <div class="hero-divider"></div>
+    <h2 class="hero-title-ko">제자반 암송구절</h2>
+
+    <div class="start-actions">
+      <button id="btn-continue-start" class="btn-hero btn-hero-primary" style="display:none;">이어서 학습하기</button>
+      <button id="btn-start" class="btn-hero">학습 시작</button>
+    </div>
+  </div>
+</section>
+
+<!-- 2. 목차 화면 -->
+<section id="screen-toc" class="screen">
+  <div id="continue-banner" class="continue-banner">
+    <span class="type-body">마지막으로 학습한 구절이 있어요</span>
+    <button id="btn-continue-toc" class="btn btn-primary btn-sm">이어서 학습하기</button>
+  </div>
+
+  <div class="toc-header">
+    <h2 class="type-heading">목차</h2>
+    <button id="btn-toc-random" class="btn btn-outline btn-sm">랜덤</button>
+  </div>
+
+  <div class="book-tabs" id="book-tabs"></div>
+
+  <div class="status-filter" id="status-filter">
+    <button class="filter-btn active" data-filter="learning">더 익히기 ○</button>
+    <button class="filter-btn" data-filter="partial">부분 암기 ◐</button>
+    <button class="filter-btn" data-filter="memorized">암기 완료 ✓</button>
+  </div>
+
+  <ul class="lesson-list" id="lesson-list"></ul>
+</section>
+
+<!-- 3. 플래시카드 학습 화면 -->
+<section id="screen-card" class="screen">
+  <div class="card-topbar">
+    <button id="btn-back-toc" class="btn btn-outline btn-sm">← 목차</button>
+    <div class="mode-toggle">
+      <button id="btn-mode-sequential" class="btn btn-tint btn-sm">순서</button>
+      <button id="btn-mode-random" class="btn btn-outline btn-sm">랜덤</button>
+    </div>
+  </div>
+
+  <div class="card-stage">
+    <div class="flashcard" id="flashcard">
+      <div class="card-face card-front">
+        <div class="type-caption card-meta" id="front-meta"></div>
+        <div class="type-display" id="front-title"></div>
+        <div class="type-caption" id="front-verse-no"></div>
+        <div class="type-body flip-hint">탭해서 뒤집기</div>
+      </div>
+      <div class="card-face card-back">
+        <div class="type-caption card-meta" id="back-meta"></div>
+        <div class="type-caption card-ref" id="back-ref"></div>
+        <button id="btn-initials" class="initials-toggle">두문 모드 <span class="dot">●</span></button>
+        <div class="type-body-lg verse-text" id="back-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-bottombar">
+    <div class="status-chip-group" id="status-chip-group">
+      <button class="status-chip" data-status="learning">더 익히기 ○</button>
+      <button class="status-chip" data-status="partial">부분 암기 ◐</button>
+      <button class="status-chip" data-status="memorized">암기 완료 ✓</button>
+    </div>
+    <div class="nav-row">
+      <button id="btn-prev" class="nav-btn">←</button>
+      <button id="btn-next" class="nav-btn">→</button>
+    </div>
+  </div>
+</section>
+
+<!-- 랜덤 범위 선택 모달 -->
+<div class="modal-overlay" id="modal-range">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <h3 class="type-heading">랜덤 범위 선택</h3>
+      <button id="btn-close-modal" class="btn btn-outline btn-sm">닫기</button>
+    </div>
+
+    <button class="range-option" data-scope="currentBook">현재 권 내</button>
+    <button class="range-option" data-scope="all">전체 64구절</button>
+    <button class="range-option" data-scope="learning">더 익히기 ○</button>
+    <button class="range-option" data-scope="partial">부분 암기 ◐</button>
+    <button class="range-option" data-scope="memorized">암기 완료 ✓</button>
+    <button class="range-option" data-scope="custom">말씀구절 선택</button>
+
+    <div class="custom-picker-list" id="custom-picker-list"></div>
+
+    <div class="modal-actions">
+      <button id="btn-apply-range" class="btn btn-primary btn-block">이 범위로 시작</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
