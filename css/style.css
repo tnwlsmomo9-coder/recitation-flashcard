@@ -1329,13 +1329,16 @@ button {
     grid-row: 2;
     align-self: center;
     justify-self: center;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    border: 1px solid var(--line);
-    background: var(--ivory-card);
-    font-size: 20px;
-    padding: 0;
+    padding: 12px 10px;
+    transition: color 0.15s ease, transform 0.15s ease;
+  }
+  #btn-prev:hover:not(:disabled) {
+    color: var(--plum-dark);
+    transform: translateX(-2px);
+  }
+  #btn-next:hover:not(:disabled) {
+    color: var(--plum-dark);
+    transform: translateX(2px);
   }
   #btn-prev {
     grid-column: 1;
