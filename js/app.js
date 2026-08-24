@@ -295,7 +295,7 @@ function renderPracticePanel(verseId, verse) {
   tabs.style.display = isCollapsed || isRandom ? "none" : "flex";
   statusPanel.style.display = isCollapsed ? "none" : "flex";
   statusBadge.style.display = isCollapsed ? "none" : "";
-  autoAdvanceRow.style.display = state.singleVerseCheck ? "none" : "flex";
+  autoAdvanceRow.style.display = isCollapsed || state.singleVerseCheck ? "none" : "flex";
 
   if (isCollapsed) {
     cardText.style.display = "none";
