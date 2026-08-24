@@ -285,6 +285,7 @@ function renderPracticePanel(verseId, verse) {
   const verseCard = document.getElementById("verse-card");
   const statusPanel = document.getElementById("status-panel");
   const statusBadge = document.getElementById("card-status-badge");
+  const autoAdvanceRow = document.querySelector(".auto-advance-row");
 
   const isRandom = state.mode === "random";
   const isCollapsed = isRandom && !state.randomRevealed;
@@ -294,6 +295,7 @@ function renderPracticePanel(verseId, verse) {
   tabs.style.display = isCollapsed || isRandom ? "none" : "flex";
   statusPanel.style.display = isCollapsed ? "none" : "flex";
   statusBadge.style.display = isCollapsed ? "none" : "";
+  autoAdvanceRow.style.display = state.singleVerseCheck ? "none" : "flex";
 
   if (isCollapsed) {
     cardText.style.display = "none";
