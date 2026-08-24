@@ -1129,3 +1129,208 @@ button {
     margin: 0 auto;
   }
 }
+
+/* =========================================================
+   태블릿 (768px~1023px) — 모바일 스타일은 위쪽에서 전혀 수정하지 않음.
+   여기부터는 768px 이상에서만 적용되는 추가 레이아웃이다.
+   ========================================================= */
+@media (min-width: 768px) {
+  .start-hero {
+    max-width: 480px;
+  }
+  .start-emblem svg {
+    height: clamp(108px, 16vw, 130px);
+  }
+  .start-title-flourish svg {
+    width: clamp(200px, 34vw, 240px);
+  }
+
+  #screen-toc {
+    max-width: 720px;
+  }
+  .lesson-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 16px;
+  }
+  .lesson-item {
+    border-bottom: none;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+
+  #screen-card {
+    max-width: 680px;
+  }
+
+  .modal-overlay {
+    align-items: center;
+  }
+  .modal-sheet {
+    max-width: 420px;
+    max-height: 80vh;
+    border-radius: 20px;
+  }
+}
+
+/* =========================================================
+   데스크톱 (1024px 이상) — 사이드바/2단 구성으로 재구성.
+   ========================================================= */
+@media (min-width: 1024px) {
+  /* ---- 시작 화면: 세로 스택 → 가로 2단(엠블럼 | 텍스트 스택) ---- */
+  #screen-start.active {
+    max-width: 1000px;
+  }
+  .start-hero {
+    display: grid;
+    grid-template-columns: minmax(180px, 300px) 1fr;
+    align-items: center;
+    column-gap: 56px;
+    max-width: 920px;
+    padding: 0 24px;
+    text-align: left;
+  }
+  .start-emblem {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    justify-content: flex-end;
+    margin-bottom: 0;
+  }
+  .start-emblem svg {
+    height: clamp(160px, 15vw, 220px);
+  }
+  .start-kicker-badge,
+  .start-title,
+  .start-title-flourish,
+  .start-subtitle-row,
+  .start-cta,
+  .start-link-btn {
+    grid-column: 2;
+  }
+  .start-kicker-badge {
+    align-self: start;
+    justify-self: start;
+  }
+  .start-title {
+    font-size: clamp(52px, 6vw, 84px);
+  }
+  .start-title-flourish,
+  .start-subtitle-row {
+    justify-content: flex-start;
+  }
+  .start-cta,
+  .start-link-btn {
+    text-align: center;
+    align-self: start;
+    justify-self: start;
+  }
+  .start-cta {
+    margin-top: 24px;
+  }
+
+  /* ---- 목차 화면: 세로 사이드바 + 2열 카드 그리드 ---- */
+  #screen-toc.active {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    grid-template-rows: auto auto auto 1fr;
+    column-gap: 40px;
+    row-gap: 14px;
+    max-width: 1120px;
+    padding: 48px 40px;
+  }
+  .toc-top-group,
+  .toc-search-filter-group {
+    display: contents;
+  }
+  .toc-header {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .book-tabs {
+    grid-column: 1;
+    grid-row: 2;
+    flex-direction: column;
+    height: fit-content;
+  }
+  .book-tab {
+    width: 100%;
+    text-align: left;
+    padding: 10px 14px;
+  }
+  .toc-search {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .status-filter {
+    grid-column: 1;
+    grid-row: 4;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .status-filter.visible {
+    max-height: 220px;
+  }
+  .filter-btn {
+    justify-content: flex-start;
+    padding: 9px 12px;
+  }
+  .lesson-list {
+    grid-column: 2;
+    grid-row: 2 / span 3;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    align-content: start;
+    gap: 12px;
+  }
+
+  /* ---- 암송 학습 화면: 카드 좌우에 큰 이전/다음 화살표 ---- */
+  #screen-card.active {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 720px) 72px;
+    grid-template-rows: auto auto auto auto;
+    column-gap: 24px;
+    row-gap: 12px;
+    justify-content: center;
+    max-width: 1000px;
+    padding: 48px 40px;
+  }
+  .card-topbar {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .verse-card {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .auto-advance-row {
+    grid-column: 2;
+    grid-row: 3;
+  }
+  .verse-pager {
+    display: contents;
+  }
+  #btn-prev,
+  #btn-next {
+    grid-row: 2;
+    align-self: center;
+    justify-self: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--ivory-card);
+    font-size: 20px;
+    padding: 0;
+  }
+  #btn-prev {
+    grid-column: 1;
+  }
+  #btn-next {
+    grid-column: 3;
+  }
+  .pager-count {
+    grid-column: 2;
+    grid-row: 4;
+    justify-self: center;
+  }
+}

@@ -47,8 +47,27 @@ function decodeChar(span, finalChar, { tempColor, finalColor, startDelay = 0 } =
 }
 
 function getRandomPosition() {
-  const x = Math.random() * Math.max(window.innerWidth - 140, 40);
+  const w = window.innerWidth;
   const h = window.innerHeight;
+  const heroEl = document.querySelector(".start-hero");
+  const heroRect = heroEl ? heroEl.getBoundingClientRect() : null;
+  const sideMargin = heroRect ? heroRect.left : 0;
+
+  // 데스크톱처럼 히어로 좌우에 넉넉한 여백이 있을 때만, 그 여백도 후보 영역에 포함한다.
+  // 모바일/태블릿은 여백이 거의 없어 이 분기가 사실상 타지 않으므로 기존 동작 그대로 유지된다.
+  if (heroRect && sideMargin > 80 && Math.random() < 0.5) {
+    const useLeft = Math.random() < 0.5;
+    const y = h * 0.1 + Math.random() * h * 0.8;
+    if (useLeft) {
+      const x = 16 + Math.random() * Math.max(sideMargin - 80, 40);
+      return { x, y };
+    }
+    const rightStart = heroRect.right + 60;
+    const x = rightStart + Math.random() * Math.max(w - rightStart - 100, 40);
+    return { x, y };
+  }
+
+  const x = Math.random() * Math.max(w - 140, 40);
   const topBand = h * 0.14;
   const bottomBandStart = h * 0.8;
   const bottomBand = Math.max(h - bottomBandStart - 40, 40);
