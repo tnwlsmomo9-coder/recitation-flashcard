@@ -21,6 +21,7 @@ const state = {
   pendingScope: "currentBook",
   pendingCustomIds: new Set(),
   tocFilter: "all",
+  tocSearch: "",
   practiceMode: "full",
   lineByLineStep: 1,
   progressiveStage: 0,
@@ -87,13 +88,8 @@ function continueLearning() {
 
 /* ---------- 목차 화면 ---------- */
 function renderToc() {
-  renderContinueBanner();
   renderBookTabs();
   renderLessonList();
-}
-
-function renderContinueBanner() {
-  document.getElementById("continue-banner").classList.toggle("visible", !!getLastVerseId());
 }
 
 function selectBookTab(bookIdOrAll) {
@@ -139,6 +135,14 @@ function lessonMatchesFilter(lesson, statusMap, filter) {
   return lesson.verses.some(v => (statusMap[v.id] || "learning") === filter);
 }
 
+function lessonMatchesSearch(lesson, query) {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  if (`${lesson.id}과`.includes(q)) return true;
+  if (lesson.title.toLowerCase().includes(q)) return true;
+  return lesson.verses.some(v => v.ref.toLowerCase().includes(q) || v.text.toLowerCase().includes(q));
+}
+
 function renderLessonList() {
   const list = document.getElementById("lesson-list");
   list.innerHTML = "";
@@ -152,12 +156,15 @@ function renderLessonList() {
         return book.lessons.map(lesson => ({ book, lesson }));
       })();
 
-  const visibleLessons = lessonsWithBook.filter(({ lesson }) => lessonMatchesFilter(lesson, statusMap, state.tocFilter));
+  const query = state.tocSearch.trim();
+  const visibleLessons = lessonsWithBook.filter(({ lesson }) =>
+    lessonMatchesFilter(lesson, statusMap, state.tocFilter) && lessonMatchesSearch(lesson, query)
+  );
 
   if (visibleLessons.length === 0) {
     const li = document.createElement("li");
     li.className = "lesson-empty type-body";
-    li.textContent = "해당하는 구절이 없습니다.";
+    li.textContent = query ? "검색 결과가 없어요" : "해당하는 구절이 없습니다.";
     list.appendChild(li);
     return;
   }
@@ -615,7 +622,10 @@ function init() {
     showScreen("toc");
     renderToc();
   });
-  document.getElementById("btn-continue-toc").addEventListener("click", continueLearning);
+  document.getElementById("toc-search-input").addEventListener("input", e => {
+    state.tocSearch = e.target.value;
+    renderLessonList();
+  });
 
   document.querySelectorAll(".filter-btn").forEach(btn => {
     btn.addEventListener("click", () => {

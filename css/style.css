@@ -264,17 +264,34 @@ button {
   gap: 22px;
 }
 
-.continue-banner {
-  display: none;
+.toc-search {
+  position: relative;
+  display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 2px;
 }
-.continue-banner.visible { display: flex; }
-.continue-banner .type-body {
-  color: var(--muted);
+.toc-search-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--plum);
+  pointer-events: none;
+}
+.toc-search-input {
+  width: 100%;
+  padding: 12px 14px 12px 40px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--ivory-card);
+  color: var(--ink);
   font-size: 14px;
+  font-family: var(--font);
+  transition: border-color 0.2s ease;
+}
+.toc-search-input::placeholder {
+  color: var(--muted);
+}
+.toc-search-input:focus {
+  outline: none;
+  border-color: var(--plum);
 }
 
 .toc-header {
