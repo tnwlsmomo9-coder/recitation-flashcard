@@ -1348,6 +1348,14 @@ button {
     padding: 12px 10px;
     transition: color 0.15s ease, transform 0.15s ease;
   }
+  #btn-prev .pager-label,
+  #btn-next .pager-label {
+    display: none;
+  }
+  #btn-prev .pager-arrow,
+  #btn-next .pager-arrow {
+    font-size: 26px;
+  }
   #btn-prev:hover:not(:disabled) {
     color: var(--plum-dark);
     transform: translateX(-2px);
