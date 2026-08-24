@@ -29,7 +29,8 @@ const state = {
   autoAdvance: true,
   autoAdvanceTimer: null,
   verseFontSize: clampToFontStep(getVerseFontSize()),
-  randomRevealed: false
+  randomRevealed: false,
+  singleVerseCheck: false
 };
 
 function shuffle(arr) {
@@ -75,6 +76,7 @@ function continueLearning() {
   const { book } = found;
   state.activeBookTab = book.id;
   state.mode = "sequential";
+  state.singleVerseCheck = false;
   state.queue = getBookVerseIds(book.id);
   state.queueIndex = state.queue.indexOf(lastId);
   resetPracticeState();
@@ -166,6 +168,7 @@ function renderLessonList() {
 function enterLesson(bookId, lessonId) {
   state.activeBookTab = bookId;
   state.mode = "sequential";
+  state.singleVerseCheck = false;
   state.queue = getBookVerseIds(bookId);
   const firstVerseId = getLessonVerseIds(bookId, lessonId)[0];
   state.queueIndex = state.queue.indexOf(firstVerseId);
@@ -179,6 +182,7 @@ function checkCurrentVerse() {
   const currentVerseId = state.queue[state.queueIndex];
   if (!currentVerseId) return;
   state.mode = "random";
+  state.singleVerseCheck = true;
   state.queue = [currentVerseId];
   state.queueIndex = 0;
   resetPracticeState();
@@ -211,6 +215,7 @@ function switchToSequential() {
   const { book } = found;
   state.activeBookTab = book.id;
   state.mode = "sequential";
+  state.singleVerseCheck = false;
   state.queue = getBookVerseIds(book.id);
   state.queueIndex = state.queue.indexOf(currentVerseId);
   resetPracticeState();
@@ -349,11 +354,16 @@ function renderCard() {
 
   const prevBtn = document.getElementById("btn-prev");
   const nextBtn = document.getElementById("btn-next");
-  if (state.mode === "sequential") {
+  if (state.singleVerseCheck) {
+    prevBtn.disabled = false;
+    nextBtn.style.display = "none";
+  } else if (state.mode === "sequential") {
+    nextBtn.style.display = "";
     prevBtn.disabled = state.queueIndex === 0;
     const isLastBook = BOOKS.findIndex(b => b.id === state.activeBookTab) === BOOKS.length - 1;
     nextBtn.disabled = state.queueIndex === state.queue.length - 1 && isLastBook;
   } else {
+    nextBtn.style.display = "";
     prevBtn.disabled = false;
     nextBtn.disabled = false;
   }
@@ -386,6 +396,22 @@ function goNext() {
 }
 
 function goPrev() {
+  if (state.singleVerseCheck) {
+    const currentVerseId = state.queue[state.queueIndex];
+    const found = findVerseById(currentVerseId);
+    if (!found) return;
+    const { book } = found;
+    state.activeBookTab = book.id;
+    state.mode = "sequential";
+    state.singleVerseCheck = false;
+    state.queue = getBookVerseIds(book.id);
+    const idx = state.queue.indexOf(currentVerseId);
+    state.queueIndex = Math.max(idx - 1, 0);
+    resetPracticeState();
+    updateModeButtons();
+    renderCard();
+    return;
+  }
   if (state.mode === "random") {
     state.queueIndex = (state.queueIndex - 1 + state.queue.length) % state.queue.length;
   } else {
@@ -485,6 +511,7 @@ function applyRange() {
   }
 
   state.mode = "random";
+  state.singleVerseCheck = false;
   state.queue = shuffle(ids.slice());
   state.queueIndex = 0;
   resetPracticeState();
