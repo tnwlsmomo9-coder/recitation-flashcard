@@ -96,6 +96,25 @@ function renderContinueBanner() {
   document.getElementById("continue-banner").classList.toggle("visible", !!getLastVerseId());
 }
 
+function selectBookTab(bookIdOrAll) {
+  const filterEl = document.getElementById("status-filter");
+  if (state.activeBookTab === bookIdOrAll) {
+    filterEl.classList.toggle("visible");
+  } else {
+    state.activeBookTab = bookIdOrAll;
+    filterEl.classList.remove("visible");
+    if (bookIdOrAll === "all") {
+      delete filterEl.dataset.book;
+    } else {
+      filterEl.dataset.book = bookIdOrAll;
+    }
+    state.tocFilter = "all";
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  }
+  renderBookTabs();
+  renderLessonList();
+}
+
 function renderBookTabs() {
   const container = document.getElementById("book-tabs");
   container.innerHTML = "";
@@ -103,32 +122,14 @@ function renderBookTabs() {
   const allBtn = document.createElement("button");
   allBtn.className = "book-tab" + (state.activeBookTab === "all" ? " active" : "");
   allBtn.textContent = "전체";
-  allBtn.addEventListener("click", () => {
-    state.activeBookTab = "all";
-    const filterEl = document.getElementById("status-filter");
-    delete filterEl.dataset.book;
-    filterEl.classList.add("visible");
-    state.tocFilter = "all";
-    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
-    renderBookTabs();
-    renderLessonList();
-  });
+  allBtn.addEventListener("click", () => selectBookTab("all"));
   container.appendChild(allBtn);
 
   BOOKS.forEach(book => {
     const btn = document.createElement("button");
     btn.className = "book-tab" + (book.id === state.activeBookTab ? " active" : "");
     btn.textContent = book.title;
-    btn.addEventListener("click", () => {
-      state.activeBookTab = book.id;
-      const filterEl = document.getElementById("status-filter");
-      filterEl.dataset.book = book.id;
-      filterEl.classList.add("visible");
-      state.tocFilter = "all";
-      document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
-      renderBookTabs();
-      renderLessonList();
-    });
+    btn.addEventListener("click", () => selectBookTab(book.id));
     container.appendChild(btn);
   });
 }
