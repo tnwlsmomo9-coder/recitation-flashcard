@@ -138,6 +138,10 @@ button {
   box-sizing: border-box;
 }
 
+.start-hero-content {
+  display: contents;
+}
+
 .start-emblem {
   display: flex;
   justify-content: center;
@@ -1192,24 +1196,17 @@ button {
   }
   .start-emblem {
     grid-column: 1;
-    grid-row: 1 / -1;
     justify-content: flex-end;
     margin-bottom: 0;
   }
   .start-emblem svg {
     height: clamp(160px, 15vw, 220px);
   }
-  .start-kicker-badge,
-  .start-title,
-  .start-title-flourish,
-  .start-subtitle-row,
-  .start-cta,
-  .start-link-btn {
+  .start-hero-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
     grid-column: 2;
-  }
-  .start-kicker-badge {
-    align-self: start;
-    justify-self: start;
   }
   .start-title {
     font-size: clamp(52px, 6vw, 84px);
@@ -1218,13 +1215,8 @@ button {
   .start-subtitle-row {
     justify-content: flex-start;
   }
-  .start-cta,
-  .start-link-btn {
-    text-align: center;
-    align-self: start;
-    justify-self: start;
-  }
   .start-cta {
+    text-align: center;
     margin-top: 24px;
   }
 
