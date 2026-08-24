@@ -1249,6 +1249,16 @@ button {
     grid-column: 1 / -1;
     grid-row: 1;
   }
+  .toc-home-link {
+    padding: 6px 14px;
+  }
+  .toc-home-link .start-kicker {
+    font-size: 14px;
+    letter-spacing: 0.1em;
+  }
+  .toc-home-link .kicker-dash {
+    font-size: 12px;
+  }
   .book-tabs {
     grid-column: 1;
     grid-row: 2;
