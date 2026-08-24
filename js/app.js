@@ -224,7 +224,7 @@ function renderLineByLineHtml(verse) {
   const isDone = step >= chunks.length;
 
   if (isDone) {
-    return `<div class="type-body-lg verse-text">${escapeHtml(verse.text)}</div>`;
+    return `<div class="verse-text-inner">${escapeHtml(verse.text)}</div>`;
   }
 
   const shown = chunks.slice(0, step);

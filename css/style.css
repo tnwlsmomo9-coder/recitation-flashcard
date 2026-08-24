@@ -599,6 +599,9 @@ button {
 
 .verse-text-inner {
   width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
   line-height: calc(1.75 * var(--lh-scale, 1));
   white-space: normal;
   word-break: keep-all;
@@ -664,6 +667,10 @@ button {
 }
 
 .lbl-text {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
   font-size: clamp(17px, 4.6vw, 19px);
   line-height: calc(1.9 * var(--lh-scale, 1));
   white-space: pre-line;
@@ -672,6 +679,10 @@ button {
 }
 
 .lbl-flow {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
   line-height: calc(1.75 * var(--lh-scale, 1));
 }
 
@@ -711,6 +722,10 @@ button {
 }
 
 .prog-text {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
   line-height: calc(2.1 * var(--lh-scale, 1));
   word-break: keep-all;
   overflow-wrap: break-word;
@@ -758,6 +773,10 @@ button {
 }
 
 .initials-text {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
   font-weight: 700;
   letter-spacing: 0.06em;
   line-height: 2;
