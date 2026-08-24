@@ -618,8 +618,9 @@ function init() {
 
   document.querySelectorAll(".filter-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      state.tocFilter = btn.dataset.filter;
-      document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b === btn));
+      const alreadyActive = btn.classList.contains("active");
+      state.tocFilter = alreadyActive ? "all" : btn.dataset.filter;
+      document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", !alreadyActive && b === btn));
       renderLessonList();
     });
   });

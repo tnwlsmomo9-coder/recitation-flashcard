@@ -310,8 +310,9 @@ button {
 
 .status-filter {
   display: flex;
-  justify-content: flex-start;
-  gap: 18px;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 8px;
   max-height: 0;
   margin-top: 0;
   opacity: 0;
@@ -323,25 +324,27 @@ button {
   margin-top: -6px;
   opacity: 1;
 }
-.status-filter[data-book="1"] { justify-content: flex-start; }
-.status-filter[data-book="2"] { justify-content: center; }
-.status-filter[data-book="3"] { justify-content: flex-end; }
 
 .filter-btn {
-  flex: none;
-  background: none;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  background: var(--ivory-card);
   border: none;
-  border-bottom: 2px solid transparent;
-  padding: 4px 2px 6px;
+  border-radius: 999px;
+  padding: 7px 10px;
   font-size: 13px;
   font-weight: 600;
   color: var(--muted);
   white-space: nowrap;
-  transition: color 0.2s ease, border-color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 .filter-btn.active {
-  border-color: var(--plum);
-  color: var(--plum);
+  background: var(--plum-light);
+  color: var(--plum-dark);
 }
 
 .lesson-empty {
