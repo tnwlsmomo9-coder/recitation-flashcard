@@ -49,8 +49,8 @@ function decodeChar(span, finalChar, { tempColor, finalColor, startDelay = 0 } =
 function getRandomPosition() {
   const x = Math.random() * Math.max(window.innerWidth - 140, 40);
   const h = window.innerHeight;
-  const topBand = h * 0.16;
-  const bottomBandStart = h * 0.72;
+  const topBand = h * 0.14;
+  const bottomBandStart = h * 0.8;
   const bottomBand = Math.max(h - bottomBandStart - 40, 40);
   const y = Math.random() < 0.5
     ? Math.random() * topBand
@@ -67,7 +67,7 @@ function scrambleQuote(quote, text) {
     gsap.set(quote, { x, y });
   })
     .to(quote, {
-      delay: Math.random() * 0.9,
+      delay: Math.random() * 1.8,
       duration: 0.7,
       opacity: 1,
       scrambleText: { text, chars, revealDelay: 0.35, speed: 1 },
@@ -103,12 +103,12 @@ export function initStartHero() {
   const glow = document.getElementById("start-decode-glow");
   if (glow) {
     gsap.to(glow, { opacity: 1, duration: 0.2 });
-    gsap.to(glow, { opacity: 0, duration: 1.1, delay: 1.6, ease: "sine.inOut" });
+    gsap.to(glow, { opacity: 0, duration: 1.3, delay: 2.6, ease: "sine.inOut" });
   }
   gsap.to(quotes, {
     opacity: 0,
-    duration: 1.1,
-    delay: 1.6,
+    duration: 1.3,
+    delay: 2.6,
     ease: "sine.inOut",
     overwrite: "auto",
   });
