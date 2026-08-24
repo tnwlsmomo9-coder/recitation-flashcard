@@ -227,10 +227,13 @@ function renderLineByLineHtml(verse) {
     return `<div class="verse-text-inner">${escapeHtml(verse.text)}</div>`;
   }
 
-  const shown = chunks.slice(0, step);
-  const parts = shown.map(chunk => `<span class="lbl-chunk">${escapeHtml(chunk)}</span>`);
-  parts.push(`<button class="lbl-progress-btn" data-action="lbl-next" aria-label="다음 구절 붙이기">›</button>`);
-  return `<div class="lbl-flow">${parts.join(" ")}</div>`;
+  const shown = chunks.slice(0, step).join(" ");
+  return `
+    <div class="lbl-tap-area" data-action="lbl-next">
+      <div class="lbl-flow">${escapeHtml(shown)}</div>
+      <div class="lbl-hint">눌러서 이어 보기</div>
+    </div>
+  `;
 }
 
 function renderProgressiveHtml(verse) {

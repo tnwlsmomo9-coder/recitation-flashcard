@@ -678,41 +678,27 @@ button {
   overflow-wrap: break-word;
 }
 
+.lbl-tap-area {
+  width: 100%;
+  cursor: pointer;
+}
+
 .lbl-flow {
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
   text-align: center;
-  line-height: calc(1.75 * var(--lh-scale, 1));
-}
-
-.lbl-chunk {
-  display: inline-block;
+  line-height: 1.5;
   word-break: keep-all;
   overflow-wrap: break-word;
-  margin: 0 0.35em 0.3em 0;
 }
 
-.lbl-progress-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 40px;
-  min-height: 40px;
-  vertical-align: middle;
-  background: none;
-  border: none;
-  border-radius: 999px;
-  color: var(--plum);
-  font-size: 19px;
-  font-weight: 700;
-  padding: 0;
-  margin: 0 0 0.3em 0;
-  transition: background-color 0.15s ease;
-}
-.lbl-progress-btn:hover,
-.lbl-progress-btn:active {
-  background: var(--plum-light);
+.lbl-hint {
+  margin-top: 22px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  opacity: 0.75;
 }
 
 .practice-feedback {
