@@ -801,83 +801,63 @@ button {
 .status-panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 14px;
   margin-top: 16px;
   animation: reveal-fade 0.3s ease;
 }
 
-.status-row {
+.status-segmented {
   display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  overflow-x: auto;
-}
-
-.status-heading {
-  color: var(--ink);
-  font-size: 15px;
-  font-weight: 600;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.status-chip-group {
-  display: flex;
-  flex-wrap: nowrap;
-  justify-content: center;
-  gap: 6px;
-  flex-shrink: 0;
+  width: 96%;
+  max-width: 400px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--ivory-bg);
+  overflow: hidden;
 }
 
 .status-chip {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   min-height: 44px;
-  flex-shrink: 0;
+  min-width: 0;
   background: none;
   border: none;
-  padding: 0;
+  padding: 8px 2px;
+  transition: background-color 0.2s ease;
+}
+.status-chip + .status-chip {
+  border-left: 1px solid var(--line);
 }
 
 .status-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  color: var(--ink);
-  opacity: 0.55;
-  font-size: 13px;
-  transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--muted);
+  transition: color 0.2s ease;
 }
 
 .status-label {
-  color: var(--ink);
-  opacity: 0.55;
-  font-size: 12.5px;
+  color: var(--muted);
+  font-size: 13.5px;
   font-weight: 600;
   white-space: nowrap;
-  transition: color 0.2s ease, opacity 0.2s ease;
+  transition: color 0.2s ease;
 }
 
-.status-chip:hover .status-icon,
-.status-chip:hover .status-label {
-  opacity: 0.8;
-}
-
-.status-chip.active .status-icon {
+.status-chip.active {
   background: var(--plum-light);
-  color: var(--plum);
-  opacity: 1;
 }
+.status-chip.active .status-icon,
 .status-chip.active .status-label {
-  color: var(--plum);
-  opacity: 1;
+  color: var(--plum-dark);
 }
 
 .auto-advance-row {
@@ -885,6 +865,8 @@ button {
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+  width: 92%;
+  max-width: 400px;
   color: var(--muted);
 }
 .auto-advance-row .type-body {
