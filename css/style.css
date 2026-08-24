@@ -865,8 +865,8 @@ button {
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  width: 92%;
-  max-width: 400px;
+  width: 100%;
+  margin-top: -12px;
   color: var(--muted);
 }
 .auto-advance-label {
