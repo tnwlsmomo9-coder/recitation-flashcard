@@ -1215,6 +1215,10 @@ button {
   .start-subtitle-row {
     justify-content: flex-start;
   }
+  .start-cta,
+  .start-link-btn {
+    align-self: flex-start;
+  }
   .start-cta {
     text-align: center;
     margin-top: 24px;

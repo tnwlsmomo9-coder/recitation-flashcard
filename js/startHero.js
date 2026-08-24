@@ -101,9 +101,63 @@ function scrambleQuote(quote, text) {
     });
 }
 
+function centerCtaUnderTitle() {
+  const desktopQuery = window.matchMedia("(min-width: 1024px)");
+  const title = document.querySelector(".start-title");
+  const cta = document.getElementById("btn-start");
+  const link = document.getElementById("btn-continue-start");
+  if (!title || !cta) return;
+
+  function apply() {
+    if (!desktopQuery.matches) {
+      cta.style.marginLeft = "";
+      if (link) link.style.marginLeft = "";
+      return;
+    }
+    const titleWidth = title.getBoundingClientRect().width;
+    [cta, link].forEach(btn => {
+      if (!btn) return;
+      const btnWidth = btn.getBoundingClientRect().width;
+      btn.style.marginLeft = `${Math.max((titleWidth - btnWidth) / 2, 0)}px`;
+    });
+  }
+
+  // The CTA label is rewritten char-by-char during the decode animation
+  // (see decodeChar below), so its rendered width keeps changing until
+  // that settles — debounce so we only measure once things go quiet,
+  // rather than guessing the animation's total duration.
+  let debounceTimer = null;
+  const scheduleApply = () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => requestAnimationFrame(apply), 120);
+  };
+
+  window.addEventListener("resize", scheduleApply);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(scheduleApply);
+  }
+  new MutationObserver(scheduleApply).observe(cta, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
+  if (link) {
+    // app.js toggles btn-continue-start's display via inline style when
+    // "이어서 학습하기" becomes available — recompute its centering then,
+    // since its width is 0 (and thus unmeasurable) while hidden.
+    new MutationObserver(scheduleApply).observe(link, {
+      attributes: true,
+      attributeFilter: ["style"],
+    });
+  }
+  apply();
+}
+
 export function initStartHero() {
   if (heroStarted) return;
   heroStarted = true;
+
+  centerCtaUnderTitle();
 
   if (typeof gsap === "undefined") return;
   gsap.registerPlugin(SplitText, ScrambleTextPlugin);
