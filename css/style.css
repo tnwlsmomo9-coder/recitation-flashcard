@@ -311,6 +311,8 @@ button {
   min-width: 0;
   padding: 5px 10px;
   gap: 5px;
+  background: none;
+  border: none;
 }
 .toc-home-link .start-kicker {
   font-size: 11px;
