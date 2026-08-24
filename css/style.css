@@ -1229,11 +1229,17 @@ button {
   #screen-toc.active {
     display: grid;
     grid-template-columns: 220px 1fr;
-    grid-template-rows: auto auto auto 1fr;
+    grid-template-rows: auto auto auto auto;
     column-gap: 32px;
     row-gap: 14px;
     max-width: 1120px;
     padding: 48px 40px;
+    /* 내부 좌우 배치·간격·크기는 그대로 두고, 헤더+사이드바+목록 전체를
+       하나의 덩어리로 보고 뷰포트 안에서 세로로만 중앙 정렬한다.
+       콘텐츠가 min-height(100vh)보다 커지면 grid는 자연히 그 높이만큼
+       늘어나므로(= 남는 공간이 없으므로) 강제 중앙정렬 없이 정상적으로
+       스크롤된다. */
+    align-content: center;
   }
   .toc-top-group,
   .toc-search-filter-group {
