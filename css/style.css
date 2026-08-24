@@ -369,6 +369,7 @@ button {
   border-radius: 12px;
   text-align: left;
   width: 100%;
+  color: var(--ink);
   transition: background-color 0.2s ease;
 }
 .lesson-item:hover,
@@ -398,6 +399,7 @@ button {
 .lesson-title {
   font-size: 16px;
   font-weight: 600;
+  color: var(--ink);
 }
 
 .lesson-refs {
@@ -917,6 +919,7 @@ button {
   width: 100%;
   text-align: left;
   font-size: 16px;
+  color: var(--ink);
 }
 .range-option.selected {
   border-color: var(--plum);
