@@ -1228,9 +1228,9 @@ button {
   /* ---- 목차 화면: 세로 사이드바 + 2열 카드 그리드 ---- */
   #screen-toc.active {
     display: grid;
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: 220px 1fr;
     grid-template-rows: auto auto auto 1fr;
-    column-gap: 40px;
+    column-gap: 32px;
     row-gap: 14px;
     max-width: 1120px;
     padding: 48px 40px;
@@ -1248,11 +1248,24 @@ button {
     grid-row: 2;
     flex-direction: column;
     height: fit-content;
+    gap: 2px;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
   }
   .book-tab {
     width: 100%;
     text-align: left;
-    padding: 10px 14px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .book-tab.active {
+    background: var(--plum-light);
+    color: var(--plum-dark);
+    font-weight: 700;
   }
   .toc-search {
     grid-column: 1;
@@ -1269,7 +1282,9 @@ button {
   }
   .filter-btn {
     justify-content: flex-start;
-    padding: 9px 12px;
+    padding: 8px 12px;
+    background: none;
+    border-radius: 8px;
   }
   .lesson-list {
     grid-column: 2;
@@ -1277,7 +1292,10 @@ button {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     align-content: start;
-    gap: 12px;
+    gap: 10px;
+  }
+  .lesson-item {
+    padding: 12px 14px;
   }
 
   /* ---- 암송 학습 화면: 카드 좌우에 큰 이전/다음 화살표 ---- */
