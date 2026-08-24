@@ -304,9 +304,26 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+}
+
+.toc-home-link {
+  min-width: 0;
+  padding: 5px 10px;
+  gap: 5px;
+}
+.toc-home-link .start-kicker {
+  font-size: 11px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.toc-home-link .kicker-dash {
+  font-size: 10px;
+  flex-shrink: 0;
 }
 
 .toc-action-link {
+  flex-shrink: 0;
   background: none;
   border: none;
   padding: 4px 2px;

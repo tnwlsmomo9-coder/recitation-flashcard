@@ -636,6 +636,10 @@ function init() {
     });
   });
   document.getElementById("btn-toc-random").addEventListener("click", openRangeModal);
+  document.getElementById("btn-toc-home").addEventListener("click", () => {
+    renderStart();
+    showScreen("start");
+  });
 
   document.getElementById("btn-back-toc").addEventListener("click", () => {
     showScreen("toc");
