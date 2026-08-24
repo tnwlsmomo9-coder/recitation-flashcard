@@ -494,6 +494,66 @@ function applyRange() {
   renderCard();
 }
 
+function initAutoAdvanceHelp() {
+  const btn = document.getElementById("btn-auto-advance-help");
+  const popover = document.getElementById("auto-advance-popover");
+  const wrap = document.getElementById("auto-advance-help-wrap");
+  if (!btn || !popover || !wrap) return;
+
+  function positionPopover() {
+    const btnRect = btn.getBoundingClientRect();
+    const margin = 8;
+    popover.style.visibility = "hidden";
+    popover.classList.add("visible");
+    const popRect = popover.getBoundingClientRect();
+    let left = btnRect.right - popRect.width;
+    left = Math.max(margin, Math.min(left, window.innerWidth - popRect.width - margin));
+    let top = btnRect.bottom + margin;
+    if (top + popRect.height > window.innerHeight - margin) {
+      top = btnRect.top - popRect.height - margin;
+    }
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+    popover.style.visibility = "";
+  }
+
+  let pinned = false;
+
+  function open() {
+    positionPopover();
+    btn.setAttribute("aria-expanded", "true");
+  }
+  function close() {
+    popover.classList.remove("visible");
+    btn.setAttribute("aria-expanded", "false");
+  }
+
+  btn.addEventListener("click", e => {
+    e.stopPropagation();
+    pinned = !pinned;
+    if (pinned) open();
+    else close();
+  });
+  wrap.addEventListener("mouseenter", () => {
+    if (!pinned) open();
+  });
+  wrap.addEventListener("mouseleave", () => {
+    if (!pinned) close();
+  });
+  document.addEventListener("click", e => {
+    if (!wrap.contains(e.target)) {
+      pinned = false;
+      close();
+    }
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      pinned = false;
+      close();
+    }
+  });
+}
+
 /* ---------- 초기화 ---------- */
 function init() {
   document.getElementById("btn-continue-start").addEventListener("click", continueLearning);
@@ -631,6 +691,8 @@ function init() {
     state.autoAdvance = autoAdvanceChk.checked;
     setAutoAdvance(state.autoAdvance);
   });
+
+  initAutoAdvanceHelp();
 
   document.getElementById("btn-font-decrease").addEventListener("click", () => {
     const idx = FONT_SIZE_STEPS.indexOf(state.verseFontSize);

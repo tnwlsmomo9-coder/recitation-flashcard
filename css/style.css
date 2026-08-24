@@ -869,6 +869,12 @@ button {
   max-width: 400px;
   color: var(--muted);
 }
+.auto-advance-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
 .auto-advance-row .type-body {
   font-size: 12px;
   color: var(--muted);
@@ -877,6 +883,60 @@ button {
   width: 14px;
   height: 14px;
   accent-color: var(--plum);
+}
+
+.help-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.help-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  color: var(--plum);
+  transition: background-color 0.15s ease;
+}
+.help-icon-btn:hover,
+.help-icon-btn:active,
+.help-icon-btn[aria-expanded="true"] {
+  background: var(--plum-light);
+}
+
+.help-popover {
+  display: none;
+  position: fixed;
+  z-index: 30;
+  width: 220px;
+  max-width: calc(100vw - 24px);
+  background: var(--ivory-card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 24px rgba(64, 53, 68, 0.18);
+  text-align: left;
+}
+.help-popover.visible {
+  display: block;
+}
+
+.help-popover-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.help-popover-body {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
 }
 
 /* ---------- Modal ---------- */
