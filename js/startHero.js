@@ -101,63 +101,74 @@ function scrambleQuote(quote, text) {
     });
 }
 
-function centerCtaUnderTitle() {
+function setupCtaCentering() {
   const desktopQuery = window.matchMedia("(min-width: 1024px)");
   const title = document.querySelector(".start-title");
   const cta = document.getElementById("btn-start");
   const link = document.getElementById("btn-continue-start");
-  if (!title || !cta) return;
+  const content = document.querySelector(".start-hero-content");
+  if (!title || !cta) return null;
 
   function apply() {
     if (!desktopQuery.matches) {
       cta.style.marginLeft = "";
       if (link) link.style.marginLeft = "";
+      if (content) content.style.width = "";
       return;
     }
+    // Let the group size naturally before measuring, in case a previous
+    // frozen width from an earlier call is still applied.
+    if (content) content.style.width = "";
     const titleWidth = title.getBoundingClientRect().width;
     [cta, link].forEach(btn => {
       if (!btn) return;
       const btnWidth = btn.getBoundingClientRect().width;
       btn.style.marginLeft = `${Math.max((titleWidth - btnWidth) / 2, 0)}px`;
     });
+    if (content) {
+      // .start-hero's second grid column is sized to this element's
+      // content width, and the whole hero box is centered on screen —
+      // so once the CTA's decode animation starts rewriting its
+      // characters (and briefly changing its own rendered width), that
+      // would otherwise reflow the column and visibly shift the entire
+      // centered group sideways. Freezing this element's width right
+      // after positioning the CTA (and before decodeChar runs) locks
+      // the group's size for the rest of the animation.
+      content.style.width = `${content.getBoundingClientRect().width}px`;
+    }
   }
 
-  // The CTA label is rewritten char-by-char during the decode animation
-  // (see decodeChar below), so its rendered width keeps changing until
-  // that settles — debounce so we only measure once things go quiet,
-  // rather than guessing the animation's total duration.
-  let debounceTimer = null;
-  const scheduleApply = () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => requestAnimationFrame(apply), 120);
-  };
-
-  window.addEventListener("resize", scheduleApply);
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(scheduleApply);
-  }
-  new MutationObserver(scheduleApply).observe(cta, {
-    childList: true,
-    subtree: true,
-    characterData: true,
-  });
+  // Deliberately NOT watching the CTA's own text mutations here, and not
+  // recomputing on document.fonts.ready either: its characters (and the
+  // title's) get rewritten to random decode-pool glyphs of varying
+  // widths for the ~1s scramble animation, and recomputing off of those
+  // transient widths — whether from every mutation or from a fonts.ready
+  // callback landing mid-animation — made the whole group visibly slide
+  // sideways, or settle into a slightly wrong final position. Instead,
+  // initStartHero() waits for fonts to be ready and calls `apply()` once,
+  // synchronously, right after the CTA/title reach their final
+  // (pre-animation) character markup — the one moment their widths are
+  // both already correct and stable — so the group is positioned once
+  // and never moves again on its own.
+  window.addEventListener("resize", apply);
   if (link) {
     // app.js toggles btn-continue-start's display via inline style when
     // "이어서 학습하기" becomes available — recompute its centering then,
     // since its width is 0 (and thus unmeasurable) while hidden.
-    new MutationObserver(scheduleApply).observe(link, {
+    new MutationObserver(apply).observe(link, {
       attributes: true,
       attributeFilter: ["style"],
     });
   }
   apply();
+  return apply;
 }
 
 export function initStartHero() {
   if (heroStarted) return;
   heroStarted = true;
 
-  centerCtaUnderTitle();
+  const applyCtaCentering = setupCtaCentering();
 
   if (typeof gsap === "undefined") return;
   gsap.registerPlugin(SplitText, ScrambleTextPlugin);
@@ -186,36 +197,62 @@ export function initStartHero() {
     overwrite: "auto",
   });
 
-  const ctaBtn = document.getElementById("btn-start");
-  if (ctaBtn) {
-    const label = ctaBtn.textContent;
-    ctaBtn.innerHTML = label
-      .split("")
-      .map(ch => (ch === " " ? " " : `<span class="decode-char cta-char">${ch}</span>`))
-      .join("");
+  // Split the title and CTA into their final per-character markup first
+  // (both still showing their finished text at this point), re-measure
+  // the CTA's centering against that final layout, and only then start
+  // the decode/scramble tweens — so the button is already sitting in its
+  // resting position before anything starts visibly moving. This whole
+  // step waits for webfonts to finish loading first: measuring against a
+  // fallback font's metrics (then correcting later, once fonts.ready
+  // fires) is exactly what used to let a mid-animation recompute lock in
+  // a slightly-off final position.
+  function startTextDecode() {
+    const titleEl = document.querySelector(".start-title");
+    let titleSplit = null;
+    if (titleEl) {
+      titleSplit = SplitText.create(titleEl, { type: "chars, lines" });
+      titleSplit.chars.forEach(charSpan => charSpan.classList.add("decode-char"));
+    }
 
-    const spans = ctaBtn.querySelectorAll(".cta-char");
-    const glyphs = label.split("").filter(ch => ch !== " ");
-    spans.forEach((span, i) => {
-      decodeChar(span, glyphs[i], {
-        tempColor: "rgba(255,255,255,0.55)",
-        finalColor: "#fff",
-        startDelay: 0.35 + i * 0.07 + Math.random() * 0.05,
+    const ctaBtn = document.getElementById("btn-start");
+    let ctaLabel = "";
+    if (ctaBtn) {
+      ctaLabel = ctaBtn.textContent;
+      ctaBtn.innerHTML = ctaLabel
+        .split("")
+        .map(ch => (ch === " " ? " " : `<span class="decode-char cta-char">${ch}</span>`))
+        .join("");
+    }
+
+    if (applyCtaCentering) applyCtaCentering();
+
+    if (titleSplit) {
+      titleSplit.chars.forEach((charSpan, i) => {
+        const finalChar = charSpan.textContent;
+        decodeChar(charSpan, finalChar, {
+          tempColor: "rgba(102,86,108,0.5)",
+          finalColor: "var(--ink)",
+          startDelay: i * 0.07 + Math.random() * 0.04,
+        });
       });
-    });
+    }
+
+    if (ctaBtn) {
+      const spans = ctaBtn.querySelectorAll(".cta-char");
+      const glyphs = ctaLabel.split("").filter(ch => ch !== " ");
+      spans.forEach((span, i) => {
+        decodeChar(span, glyphs[i], {
+          tempColor: "rgba(255,255,255,0.55)",
+          finalColor: "#fff",
+          startDelay: 0.35 + i * 0.07 + Math.random() * 0.05,
+        });
+      });
+    }
   }
 
-  const titleEl = document.querySelector(".start-title");
-  if (titleEl) {
-    const split = SplitText.create(titleEl, { type: "chars, lines" });
-    split.chars.forEach(charSpan => charSpan.classList.add("decode-char"));
-    split.chars.forEach((charSpan, i) => {
-      const finalChar = charSpan.textContent;
-      decodeChar(charSpan, finalChar, {
-        tempColor: "rgba(102,86,108,0.5)",
-        finalColor: "var(--ink)",
-        startDelay: i * 0.07 + Math.random() * 0.04,
-      });
-    });
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(startTextDecode);
+  } else {
+    startTextDecode();
   }
 }
