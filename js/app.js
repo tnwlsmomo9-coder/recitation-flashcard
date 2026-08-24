@@ -622,9 +622,19 @@ function init() {
     showScreen("toc");
     renderToc();
   });
-  document.getElementById("toc-search-input").addEventListener("input", e => {
+  const tocSearchInput = document.getElementById("toc-search-input");
+  const tocSearchClear = document.getElementById("toc-search-clear");
+  tocSearchInput.addEventListener("input", e => {
     state.tocSearch = e.target.value;
+    tocSearchClear.classList.toggle("visible", e.target.value.length > 0);
     renderLessonList();
+  });
+  tocSearchClear.addEventListener("click", () => {
+    tocSearchInput.value = "";
+    state.tocSearch = "";
+    tocSearchClear.classList.remove("visible");
+    renderLessonList();
+    tocSearchInput.focus();
   });
 
   document.querySelectorAll(".filter-btn").forEach(btn => {
