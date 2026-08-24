@@ -4,7 +4,7 @@ const KEY_AUTO_ADVANCE = "srp:autoAdvance";
 const KEY_VERSE_FONT_SIZE = "srp:verseFontSize";
 
 export const DEFAULT_STATUS = "learning";
-export const DEFAULT_VERSE_FONT_SIZE = 18;
+export const DEFAULT_VERSE_FONT_SIZE = 22;
 
 export function getLastVerseId() {
   return localStorage.getItem(KEY_LAST_VERSE);
@@ -40,7 +40,7 @@ export function setVerseStatus(verseId, status) {
 
 export function getAutoAdvance() {
   const raw = localStorage.getItem(KEY_AUTO_ADVANCE);
-  return raw === null ? true : raw === "1";
+  return raw === null ? false : raw === "1";
 }
 
 export function setAutoAdvance(enabled) {
