@@ -588,11 +588,21 @@ button {
 }
 
 .verse-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: clamp(150px, 24vh, 220px);
+  padding: 4px 0 22px;
+  box-sizing: border-box;
+  animation: reveal-fade 0.3s ease;
+}
+
+.verse-text-inner {
+  width: 100%;
   line-height: calc(1.75 * var(--lh-scale, 1));
   white-space: normal;
   word-break: keep-all;
   overflow-wrap: break-word;
-  animation: reveal-fade 0.3s ease;
 }
 
 .verse-text .first-char {
@@ -646,7 +656,11 @@ button {
 .practice-body {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 14px;
+  min-height: clamp(150px, 24vh, 220px);
+  padding-bottom: 18px;
+  box-sizing: border-box;
 }
 
 .lbl-text {

@@ -45,7 +45,7 @@ function escapeHtml(str) {
 }
 
 function renderVerseTextWithEmphasis(text) {
-  return text
+  const html = text
     .split(" ")
     .map(word => {
       if (word.length === 0) return word;
@@ -54,6 +54,7 @@ function renderVerseTextWithEmphasis(text) {
       return `<span class="first-char">${first}</span>${rest}`;
     })
     .join(" ");
+  return `<div class="verse-text-inner">${html}</div>`;
 }
 
 function showScreen(name) {
@@ -295,7 +296,7 @@ function renderPracticePanel(verseId, verse) {
 
   const isFull = isRandom || state.practiceMode === "full";
   cardText.style.display = isFull ? "" : "none";
-  body.style.display = isFull ? "none" : "block";
+  body.style.display = isFull ? "none" : "flex";
 
   if (isFull) {
     body.innerHTML = "";
