@@ -294,13 +294,31 @@ button {
   border-color: var(--plum);
 }
 
+.toc-top-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .toc-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.book-select-group {
+.toc-action-link {
+  background: none;
+  border: none;
+  padding: 4px 2px;
+  color: var(--plum);
+  font-size: 13px;
+  font-weight: 700;
+}
+.toc-action-link:hover {
+  color: var(--plum-dark);
+}
+
+.toc-search-filter-group {
   display: flex;
   flex-direction: column;
 }
@@ -311,7 +329,7 @@ button {
   background: var(--ivory-card);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 4px;
+  padding: 3px;
 }
 
 .book-tab {
@@ -319,7 +337,7 @@ button {
   background: none;
   border: none;
   border-radius: 999px;
-  padding: 10px 0;
+  padding: 8px 0;
   font-size: 15px;
   font-weight: 700;
   color: var(--muted);
