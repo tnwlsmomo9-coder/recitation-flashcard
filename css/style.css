@@ -1187,9 +1187,10 @@ button {
   }
   .start-hero {
     display: grid;
-    grid-template-columns: minmax(180px, 300px) 1fr;
+    grid-template-columns: minmax(180px, 300px) max-content;
     align-items: center;
     column-gap: 56px;
+    width: fit-content;
     max-width: 920px;
     padding: 0 24px;
     text-align: left;
