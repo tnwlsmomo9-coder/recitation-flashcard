@@ -99,6 +99,22 @@ function renderContinueBanner() {
 function renderBookTabs() {
   const container = document.getElementById("book-tabs");
   container.innerHTML = "";
+
+  const allBtn = document.createElement("button");
+  allBtn.className = "book-tab" + (state.activeBookTab === "all" ? " active" : "");
+  allBtn.textContent = "전체";
+  allBtn.addEventListener("click", () => {
+    state.activeBookTab = "all";
+    const filterEl = document.getElementById("status-filter");
+    delete filterEl.dataset.book;
+    filterEl.classList.add("visible");
+    state.tocFilter = "all";
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    renderBookTabs();
+    renderLessonList();
+  });
+  container.appendChild(allBtn);
+
   BOOKS.forEach(book => {
     const btn = document.createElement("button");
     btn.className = "book-tab" + (book.id === state.activeBookTab ? " active" : "");
@@ -125,10 +141,17 @@ function lessonMatchesFilter(lesson, statusMap, filter) {
 function renderLessonList() {
   const list = document.getElementById("lesson-list");
   list.innerHTML = "";
-  const book = BOOKS.find(b => b.id === state.activeBookTab);
   const statusMap = getStatusMap();
 
-  const visibleLessons = book.lessons.filter(lesson => lessonMatchesFilter(lesson, statusMap, state.tocFilter));
+  const isAll = state.activeBookTab === "all";
+  const lessonsWithBook = isAll
+    ? BOOKS.flatMap(b => b.lessons.map(lesson => ({ book: b, lesson })))
+    : (() => {
+        const book = BOOKS.find(b => b.id === state.activeBookTab);
+        return book.lessons.map(lesson => ({ book, lesson }));
+      })();
+
+  const visibleLessons = lessonsWithBook.filter(({ lesson }) => lessonMatchesFilter(lesson, statusMap, state.tocFilter));
 
   if (visibleLessons.length === 0) {
     const li = document.createElement("li");
@@ -138,7 +161,7 @@ function renderLessonList() {
     return;
   }
 
-  visibleLessons.forEach(lesson => {
+  visibleLessons.forEach(({ book, lesson }) => {
     const li = document.createElement("li");
     const btn = document.createElement("button");
     btn.className = "lesson-item";
@@ -149,10 +172,11 @@ function renderLessonList() {
       })
       .join("");
     const refs = lesson.verses.map(v => v.ref).join(" · ");
+    const lessonNumberLabel = isAll ? `${book.title} ${lesson.id}과` : `${lesson.id}과`;
     btn.innerHTML = `
       <div class="lesson-main">
         <div class="lesson-heading">
-          <span class="lesson-number type-caption">${lesson.id}과</span>
+          <span class="lesson-number type-caption">${lessonNumberLabel}</span>
           <span class="lesson-title">${lesson.title}</span>
         </div>
         <div class="lesson-refs type-caption">${refs}</div>
