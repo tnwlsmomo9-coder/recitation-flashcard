@@ -4,33 +4,104 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>제자반 암송구절</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Jost:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/SplitText.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrambleTextPlugin.min.js"></script>
 </head>
 <body>
 
 <!-- 1. 시작 화면 -->
-<section id="screen-start" class="screen active hero-bold">
-  <div class="hero-cursor" id="hero-cursor" aria-hidden="true"></div>
-  <div class="hero-glow" aria-hidden="true"></div>
-  <span class="hero-particle" style="top:22%; left:16%; animation-delay:0s;"></span>
-  <span class="hero-particle" style="top:14%; left:78%; animation-delay:0.6s;"></span>
-  <span class="hero-particle" style="top:66%; left:10%; animation-delay:1.2s;"></span>
-  <span class="hero-particle" style="top:72%; left:84%; animation-delay:1.8s;"></span>
-  <span class="hero-particle" style="top:40%; left:92%; animation-delay:2.4s;"></span>
-  <span class="hero-particle" style="top:85%; left:46%; animation-delay:0.3s;"></span>
+<section id="screen-start" class="screen active start-screen">
+  <div class="start-quotes" id="start-quotes" aria-hidden="true">
+    <span class="quote">매일 조금씩</span>
+    <span class="quote">마음에 새기는 말씀</span>
+    <span class="quote">말씀 앞에 서다</span>
+    <span class="quote">은혜의 한 구절</span>
+  </div>
 
-  <div class="hero-content">
-    <h1 class="hero-title-en">Discipleship Class<br>Recitation Verses</h1>
-    <div class="hero-divider"></div>
-    <h2 class="hero-title-ko">제자반 암송구절</h2>
+  <div class="start-decode-glow" id="start-decode-glow" aria-hidden="true"></div>
 
-    <div class="start-actions">
-      <button id="btn-continue-start" class="btn-hero btn-hero-primary" style="display:none;">이어서 학습하기</button>
-      <button id="btn-start" class="btn-hero">학습 시작</button>
+  <div class="start-hero">
+    <div class="start-emblem" aria-hidden="true">
+      <svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="domeGlow" cx="50%" cy="55%" r="55%">
+            <stop offset="0%" stop-color="#EDE7EE" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#EDE7EE" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+
+        <ellipse cx="100" cy="95" rx="66" ry="58" fill="url(#domeGlow)"/>
+        <path d="M40 112 A60 60 0 0 1 160 112 Z" fill="#FFFDF8" stroke="#66566C" stroke-width="1.5"/>
+
+        <g stroke="#403544" stroke-width="4" stroke-linecap="round">
+          <line x1="100" y1="16" x2="100" y2="54"/>
+          <line x1="86" y1="30" x2="114" y2="30"/>
+        </g>
+
+        <g fill="#66566C">
+          <path d="M66 40 l3.5 9 9 3.5 -9 3.5 -3.5 9 -3.5 -9 -9 -3.5 9 -3.5 z"/>
+          <path d="M133 36 l3 7.5 7.5 3 -7.5 3 -3 7.5 -3 -7.5 -7.5 -3 7.5 -3 z"/>
+        </g>
+
+        <g stroke="#66566C" stroke-width="1.6" fill="none" opacity="0.7">
+          <path d="M42 108 Q24 100 17 82"/>
+        </g>
+        <g fill="#66566C" opacity="0.8">
+          <ellipse cx="38" cy="105" rx="8" ry="3.4" transform="rotate(-35 38 105)"/>
+          <ellipse cx="29" cy="97" rx="7.5" ry="3.2" transform="rotate(-55 29 97)"/>
+          <ellipse cx="22" cy="88" rx="7" ry="3" transform="rotate(-75 22 88)"/>
+          <ellipse cx="18" cy="78" rx="6.5" ry="2.8" transform="rotate(-95 18 78)"/>
+        </g>
+
+        <g stroke="#66566C" stroke-width="1.6" fill="none" opacity="0.7">
+          <path d="M158 108 Q176 100 183 82"/>
+        </g>
+        <g fill="#66566C" opacity="0.8">
+          <ellipse cx="162" cy="105" rx="8" ry="3.4" transform="rotate(35 162 105)"/>
+          <ellipse cx="171" cy="97" rx="7.5" ry="3.2" transform="rotate(55 171 97)"/>
+          <ellipse cx="178" cy="88" rx="7" ry="3" transform="rotate(75 178 88)"/>
+          <ellipse cx="182" cy="78" rx="6.5" ry="2.8" transform="rotate(95 182 78)"/>
+        </g>
+
+        <g>
+          <path d="M100 68 L60 89 L60 116 L100 100 Z" fill="#FFFDF8" stroke="#403544" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M100 68 L140 89 L140 116 L100 100 Z" fill="#FFFDF8" stroke="#403544" stroke-width="2" stroke-linejoin="round"/>
+          <line x1="100" y1="68" x2="100" y2="100" stroke="#403544" stroke-width="2"/>
+          <line x1="70" y1="92" x2="92" y2="83" stroke="#DDD6D3" stroke-width="1.5"/>
+          <line x1="70" y1="101" x2="92" y2="92" stroke="#DDD6D3" stroke-width="1.5"/>
+          <line x1="108" y1="83" x2="130" y2="92" stroke="#DDD6D3" stroke-width="1.5"/>
+          <line x1="108" y1="92" x2="130" y2="101" stroke="#DDD6D3" stroke-width="1.5"/>
+          <path d="M95 100 L95 120 L100 114 L105 120 L105 100 Z" fill="#66566C"/>
+        </g>
+      </svg>
     </div>
+
+    <div class="start-kicker-badge">
+      <span class="kicker-dash">—</span>
+      <span class="start-kicker">신천중부교회 · 제자훈련반</span>
+      <span class="kicker-dash">—</span>
+    </div>
+
+    <h1 class="start-title">말씀암송</h1>
+
+    <div class="start-title-flourish" aria-hidden="true">
+      <svg viewBox="0 0 200 20" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 10 Q60 -2 100 10 T180 10" fill="none" stroke="#66566C" stroke-width="1.5" opacity="0.5"/>
+        <ellipse cx="14" cy="10" rx="6" ry="3" fill="#EDE7EE" stroke="#66566C" stroke-width="1" transform="rotate(-20 14 10)"/>
+        <ellipse cx="186" cy="10" rx="6" ry="3" fill="#EDE7EE" stroke="#66566C" stroke-width="1" transform="rotate(20 186 10)"/>
+      </svg>
+    </div>
+
+    <div class="start-subtitle-row">
+      <span class="sub-dash"></span>
+      <p class="start-subtitle">매일 조금씩, 마음에 새기는 말씀</p>
+      <span class="sub-dash"></span>
+    </div>
+
+    <button id="btn-start" class="start-cta">말씀 암송 시작</button>
+    <button id="btn-continue-start" class="start-link-btn" style="display:none;">이어서 학습하기</button>
   </div>
 </section>
 
@@ -43,7 +114,7 @@
 
   <div class="toc-header">
     <h2 class="type-heading">목차</h2>
-    <button id="btn-toc-random" class="btn btn-outline btn-sm">랜덤</button>
+    <button id="btn-toc-random" class="btn btn-outline btn-sm">암송점검</button>
   </div>
 
   <div class="book-tabs" id="book-tabs"></div>
@@ -57,43 +128,63 @@
   <ul class="lesson-list" id="lesson-list"></ul>
 </section>
 
-<!-- 3. 플래시카드 학습 화면 -->
+<!-- 3. 암송 학습 화면 -->
 <section id="screen-card" class="screen">
   <div class="card-topbar">
-    <button id="btn-back-toc" class="btn btn-outline btn-sm">← 목차</button>
+    <button id="btn-back-toc" class="text-link-btn">‹ 목차</button>
     <div class="mode-toggle">
-      <button id="btn-mode-sequential" class="btn btn-tint btn-sm">순서</button>
-      <button id="btn-mode-random" class="btn btn-outline btn-sm">랜덤</button>
+      <button id="btn-mode-sequential" class="mode-segment">말씀익히기</button>
+      <button id="btn-mode-random" class="mode-segment">암송점검</button>
     </div>
   </div>
 
-  <div class="card-stage">
-    <div class="flashcard" id="flashcard">
-      <div class="card-face card-front">
-        <div class="type-caption card-meta" id="front-meta"></div>
-        <div class="type-display" id="front-title"></div>
-        <div class="type-caption" id="front-verse-no"></div>
-        <div class="type-body flip-hint">탭해서 뒤집기</div>
+  <div class="verse-card" id="verse-card">
+    <div class="verse-card-preview">
+      <div class="verse-card-head">
+        <span class="type-caption verse-meta" id="card-meta"></span>
+        <span class="verse-status-badge" id="card-status-badge"></span>
       </div>
-      <div class="card-face card-back">
-        <div class="type-caption card-meta" id="back-meta"></div>
-        <div class="type-caption card-ref" id="back-ref"></div>
-        <button id="btn-initials" class="initials-toggle">두문 모드 <span class="dot">●</span></button>
-        <div class="type-body-lg verse-text" id="back-text"></div>
+      <div class="type-display verse-title" id="card-title"></div>
+      <div class="verse-ref-row">
+        <div class="type-caption verse-ref" id="card-ref"></div>
+        <div class="font-size-control">
+          <button id="btn-font-decrease" class="font-size-btn" aria-label="본문 글자 작게">가−</button>
+          <button id="btn-font-increase" class="font-size-btn" aria-label="본문 글자 크게">가+</button>
+        </div>
       </div>
+      <div class="verse-card-hint" id="verse-tap-hint">
+        <div class="verse-hint-title">먼저 말씀을 떠올려 보세요</div>
+        <div class="verse-hint-action">눌러서 말씀 확인하기 ›</div>
+      </div>
+    </div>
+    <div class="practice-tabs" id="practice-tabs">
+      <button class="practice-tab" data-mode="full">전체</button>
+      <button class="practice-tab" data-mode="lineByLine">나눠보기</button>
+      <button class="practice-tab" data-mode="progressive">빈칸암기</button>
+      <button class="practice-tab" data-mode="initials">첫 글자</button>
+    </div>
+    <div class="type-body-lg verse-text" id="card-text"></div>
+    <div class="practice-body" id="practice-body"></div>
+    <div class="status-panel" id="status-panel">
+      <div class="status-row">
+        <div class="type-heading status-heading">현재 암송 상태</div>
+        <div class="status-chip-group" id="status-chip-group">
+          <button class="status-chip" data-status="learning"><span class="status-icon">○</span><span class="status-label">더 익히기</span></button>
+          <button class="status-chip" data-status="partial"><span class="status-icon">◐</span><span class="status-label">부분 암기</span></button>
+          <button class="status-chip" data-status="memorized"><span class="status-icon">✓</span><span class="status-label">암기 완료</span></button>
+        </div>
+      </div>
+      <label class="auto-advance-row">
+        <input type="checkbox" id="chk-auto-advance">
+        <span class="type-body">선택 후 자동으로 다음 말씀</span>
+      </label>
     </div>
   </div>
 
-  <div class="card-bottombar">
-    <div class="status-chip-group" id="status-chip-group">
-      <button class="status-chip" data-status="learning">더 익히기 ○</button>
-      <button class="status-chip" data-status="partial">부분 암기 ◐</button>
-      <button class="status-chip" data-status="memorized">암기 완료 ✓</button>
-    </div>
-    <div class="nav-row">
-      <button id="btn-prev" class="nav-btn">←</button>
-      <button id="btn-next" class="nav-btn">→</button>
-    </div>
+  <div class="verse-pager">
+    <button id="btn-prev" class="pager-btn">‹ 이전</button>
+    <span class="pager-count" id="pager-count"></span>
+    <button id="btn-next" class="pager-btn">다음 ›</button>
   </div>
 </section>
 

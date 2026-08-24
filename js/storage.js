@@ -1,7 +1,10 @@
 const KEY_LAST_VERSE = "srp:lastVerseId";
 const KEY_STATUS = "srp:verseStatus";
+const KEY_AUTO_ADVANCE = "srp:autoAdvance";
+const KEY_VERSE_FONT_SIZE = "srp:verseFontSize";
 
 export const DEFAULT_STATUS = "learning";
+export const DEFAULT_VERSE_FONT_SIZE = 18;
 
 export function getLastVerseId() {
   return localStorage.getItem(KEY_LAST_VERSE);
@@ -33,4 +36,22 @@ export function setVerseStatus(verseId, status) {
   const map = getStatusMap();
   map[verseId] = status;
   saveStatusMap(map);
+}
+
+export function getAutoAdvance() {
+  const raw = localStorage.getItem(KEY_AUTO_ADVANCE);
+  return raw === null ? true : raw === "1";
+}
+
+export function setAutoAdvance(enabled) {
+  localStorage.setItem(KEY_AUTO_ADVANCE, enabled ? "1" : "0");
+}
+
+export function getVerseFontSize() {
+  const raw = Number(localStorage.getItem(KEY_VERSE_FONT_SIZE));
+  return raw > 0 ? raw : DEFAULT_VERSE_FONT_SIZE;
+}
+
+export function setVerseFontSize(size) {
+  localStorage.setItem(KEY_VERSE_FONT_SIZE, String(size));
 }

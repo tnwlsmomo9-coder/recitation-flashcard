@@ -1,19 +1,35 @@
 import { BOOKS, findVerseById, getAllVerseIds, getBookVerseIds, getLessonVerseIds } from "./data.js";
-import { getLastVerseId, setLastVerseId, getStatusMap, getVerseStatus, setVerseStatus } from "./storage.js";
+import { getLastVerseId, setLastVerseId, getStatusMap, getVerseStatus, setVerseStatus, getAutoAdvance, setAutoAdvance, getVerseFontSize, setVerseFontSize } from "./storage.js";
 import { toInitials } from "./initials.js";
+import { getMemorizationChunks, getMaskIndices, MASK_STAGE_COUNT } from "./practice.js";
+import { initStartHero } from "./startHero.js";
 
 const STATUS_SYMBOL = { memorized: "✓", partial: "◐", learning: "○" };
+const STATUS_LABEL = { memorized: "✓ 암기 완료", partial: "◐ 부분 암기", learning: "○ 더 익히기" };
+const FONT_SIZE_STEPS = [18, 20, 22, 24, 26];
+const LINE_HEIGHT_SCALE_STEPS = [1, 0.97, 0.94, 0.9, 0.86];
+
+function clampToFontStep(size) {
+  return FONT_SIZE_STEPS.reduce((closest, step) => (Math.abs(step - size) < Math.abs(closest - size) ? step : closest), FONT_SIZE_STEPS[0]);
+}
 
 const state = {
   activeBookTab: 1,
   mode: "sequential",
   queue: [],
   queueIndex: 0,
-  showInitials: false,
-  isFlipped: false,
   pendingScope: "currentBook",
   pendingCustomIds: new Set(),
-  tocFilter: "all"
+  tocFilter: "all",
+  practiceMode: "full",
+  lineByLineStep: 1,
+  progressiveStage: 0,
+  progressiveDone: false,
+  revealedHints: new Set(),
+  autoAdvance: true,
+  autoAdvanceTimer: null,
+  verseFontSize: clampToFontStep(getVerseFontSize()),
+  randomRevealed: false
 };
 
 function shuffle(arr) {
@@ -22,6 +38,22 @@ function shuffle(arr) {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+function renderVerseTextWithEmphasis(text) {
+  return text
+    .split(" ")
+    .map(word => {
+      if (word.length === 0) return word;
+      const first = escapeHtml(word[0]);
+      const rest = escapeHtml(word.slice(1));
+      return `<span class="first-char">${first}</span>${rest}`;
+    })
+    .join(" ");
 }
 
 function showScreen(name) {
@@ -44,7 +76,7 @@ function continueLearning() {
   state.mode = "sequential";
   state.queue = getBookVerseIds(book.id);
   state.queueIndex = state.queue.indexOf(lastId);
-  state.isFlipped = false;
+  resetPracticeState();
   updateModeButtons();
   showScreen("card");
   renderCard();
@@ -113,9 +145,15 @@ function renderLessonList() {
         return `<span class="status-dot status-${status}">${STATUS_SYMBOL[status]}</span>`;
       })
       .join("");
+    const refs = lesson.verses.map(v => v.ref).join(" · ");
     btn.innerHTML = `
-      <span class="lesson-number type-caption">${lesson.id}과</span>
-      <span class="lesson-title type-body">${lesson.title}</span>
+      <div class="lesson-main">
+        <div class="lesson-heading">
+          <span class="lesson-number type-caption">${lesson.id}과</span>
+          <span class="lesson-title">${lesson.title}</span>
+        </div>
+        <div class="lesson-refs type-caption">${refs}</div>
+      </div>
       <span class="lesson-status">${statusDots}</span>
     `;
     btn.addEventListener("click", () => enterLesson(book.id, lesson.id));
@@ -130,20 +168,39 @@ function enterLesson(bookId, lessonId) {
   state.queue = getBookVerseIds(bookId);
   const firstVerseId = getLessonVerseIds(bookId, lessonId)[0];
   state.queueIndex = state.queue.indexOf(firstVerseId);
-  state.isFlipped = false;
+  resetPracticeState();
   updateModeButtons();
   showScreen("card");
   renderCard();
 }
 
-/* ---------- 플래시카드 화면 ---------- */
+function checkCurrentVerse() {
+  const currentVerseId = state.queue[state.queueIndex];
+  if (!currentVerseId) return;
+  state.mode = "random";
+  state.queue = [currentVerseId];
+  state.queueIndex = 0;
+  resetPracticeState();
+  updateModeButtons();
+  renderCard();
+}
+
+/* ---------- 암송 학습 화면 ---------- */
+function resetPracticeState() {
+  clearTimeout(state.autoAdvanceTimer);
+  state.practiceMode = "full";
+  state.lineByLineStep = 1;
+  state.progressiveStage = 0;
+  state.progressiveDone = false;
+  state.revealedHints = new Set();
+  state.randomRevealed = false;
+}
+
 function updateModeButtons() {
   const seqBtn = document.getElementById("btn-mode-sequential");
   const randBtn = document.getElementById("btn-mode-random");
-  seqBtn.classList.toggle("btn-tint", state.mode === "sequential");
-  seqBtn.classList.toggle("btn-outline", state.mode !== "sequential");
-  randBtn.classList.toggle("btn-tint", state.mode === "random");
-  randBtn.classList.toggle("btn-outline", state.mode !== "random");
+  seqBtn.classList.toggle("active", state.mode === "sequential");
+  randBtn.classList.toggle("active", state.mode === "random");
 }
 
 function switchToSequential() {
@@ -155,9 +212,117 @@ function switchToSequential() {
   state.mode = "sequential";
   state.queue = getBookVerseIds(book.id);
   state.queueIndex = state.queue.indexOf(currentVerseId);
-  state.isFlipped = false;
+  resetPracticeState();
   updateModeButtons();
   renderCard();
+}
+
+function renderLineByLineHtml(verse) {
+  const chunks = getMemorizationChunks(verse);
+  const step = Math.min(state.lineByLineStep, chunks.length);
+  const isDone = step >= chunks.length;
+
+  if (isDone) {
+    return `<div class="type-body-lg verse-text">${escapeHtml(verse.text)}</div>`;
+  }
+
+  const shown = chunks.slice(0, step);
+  const parts = shown.map(chunk => `<span class="lbl-chunk">${escapeHtml(chunk)}</span>`);
+  parts.push(`<button class="lbl-progress-btn" data-action="lbl-next" aria-label="다음 구절 붙이기">›</button>`);
+  return `<div class="lbl-flow">${parts.join(" ")}</div>`;
+}
+
+function renderProgressiveHtml(verse) {
+  if (state.progressiveDone) {
+    return `
+      <div class="prog-done">
+        <div class="practice-feedback prog-done-heading">여기까지 기억했어요</div>
+        <div class="lbl-text">${escapeHtml(verse.text)}</div>
+      </div>
+    `;
+  }
+
+  const words = verse.text.split(" ").filter(w => w.length > 0);
+  const stage = state.progressiveStage;
+  const maskIndices = getMaskIndices(verse, stage);
+
+  const wordSpans = words.map((word, i) => {
+    if (!maskIndices.has(i)) {
+      return `<span class="word">${escapeHtml(word)}</span>`;
+    }
+    if (state.revealedHints.has(i)) {
+      return `<span class="word revealed" data-action="toggle-reveal" data-idx="${i}">${escapeHtml(word)}</span>`;
+    }
+    return `<span class="blank" data-action="toggle-reveal" data-idx="${i}">?</span>`;
+  });
+
+  return `<div class="prog-text">${wordSpans.join(" ")}</div>`;
+}
+
+function renderInitialsHtml(verse) {
+  return `<div class="initials-text">${escapeHtml(toInitials(verse.text))}</div>`;
+}
+
+function renderPracticePanel(verseId, verse) {
+  document.querySelectorAll(".practice-tab").forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.mode === state.practiceMode);
+  });
+
+  const cardText = document.getElementById("card-text");
+  const body = document.getElementById("practice-body");
+  const tabs = document.getElementById("practice-tabs");
+  const fontControl = document.querySelector(".font-size-control");
+  const tapHint = document.getElementById("verse-tap-hint");
+  const verseCard = document.getElementById("verse-card");
+  const statusPanel = document.getElementById("status-panel");
+  const statusBadge = document.getElementById("card-status-badge");
+
+  const isRandom = state.mode === "random";
+  const isCollapsed = isRandom && !state.randomRevealed;
+  verseCard.classList.toggle("collapsed", isCollapsed);
+  tapHint.style.display = isCollapsed ? "flex" : "none";
+  fontControl.style.display = isCollapsed ? "none" : "flex";
+  tabs.style.display = isCollapsed || isRandom ? "none" : "flex";
+  statusPanel.style.display = isCollapsed ? "none" : "flex";
+  statusBadge.style.display = isCollapsed ? "none" : "";
+
+  if (isCollapsed) {
+    cardText.style.display = "none";
+    body.style.display = "none";
+    body.innerHTML = "";
+    return;
+  }
+
+  const isFull = isRandom || state.practiceMode === "full";
+  cardText.style.display = isFull ? "" : "none";
+  body.style.display = isFull ? "none" : "block";
+
+  if (isFull) {
+    body.innerHTML = "";
+    return;
+  }
+
+  if (state.practiceMode === "lineByLine") {
+    body.innerHTML = renderLineByLineHtml(verse);
+  } else if (state.practiceMode === "progressive") {
+    body.innerHTML = renderProgressiveHtml(verse);
+  } else {
+    body.innerHTML = renderInitialsHtml(verse);
+  }
+}
+
+function applyVerseFontSize() {
+  const size = `${state.verseFontSize}px`;
+  const stepIndex = FONT_SIZE_STEPS.indexOf(state.verseFontSize);
+  const lhScale = LINE_HEIGHT_SCALE_STEPS[stepIndex] ?? 1;
+  const cardText = document.getElementById("card-text");
+  const practiceBody = document.getElementById("practice-body");
+  cardText.style.fontSize = size;
+  cardText.style.setProperty("--lh-scale", lhScale);
+  practiceBody.style.fontSize = size;
+  practiceBody.style.setProperty("--lh-scale", lhScale);
+  document.getElementById("btn-font-decrease").disabled = state.verseFontSize <= FONT_SIZE_STEPS[0];
+  document.getElementById("btn-font-increase").disabled = state.verseFontSize >= FONT_SIZE_STEPS[FONT_SIZE_STEPS.length - 1];
 }
 
 function renderCard() {
@@ -165,54 +330,32 @@ function renderCard() {
   const found = findVerseById(verseId);
   if (!found) return;
   const { book, lesson, verse } = found;
-  const verseLabel = verseId.split("-")[2];
 
-  document.getElementById("front-meta").textContent = `${book.title} · ${lesson.id}과`;
-  document.getElementById("front-title").textContent = lesson.title;
-  document.getElementById("front-verse-no").textContent = `구절 ${verseLabel}`;
+  document.getElementById("card-meta").textContent = `${book.title} · ${lesson.id}과`;
+  document.getElementById("card-title").textContent = lesson.title;
+  document.getElementById("card-ref").textContent = verse.ref;
+  document.getElementById("card-text").innerHTML = renderVerseTextWithEmphasis(verse.text);
+  applyVerseFontSize();
 
-  document.getElementById("back-meta").textContent = `${book.title} · ${lesson.id}과 ${lesson.title}`;
-  document.getElementById("back-ref").textContent = verse.ref;
-  document.getElementById("back-text").textContent = state.showInitials ? toInitials(verse.text) : verse.text;
-
-  document.getElementById("flashcard").classList.toggle("flipped", state.isFlipped);
-  document.getElementById("btn-initials").classList.toggle("on", state.showInitials);
-
-  const status = getVerseStatus(verseId);
+  const rawStatus = getStatusMap()[verseId];
+  document.getElementById("card-status-badge").textContent = rawStatus ? STATUS_LABEL[rawStatus] : "";
   document.querySelectorAll(".status-chip").forEach(chip => {
-    chip.classList.toggle("active", chip.dataset.status === status);
+    chip.classList.toggle("active", chip.dataset.status === rawStatus);
   });
 
   const prevBtn = document.getElementById("btn-prev");
   const nextBtn = document.getElementById("btn-next");
   if (state.mode === "sequential") {
     prevBtn.disabled = state.queueIndex === 0;
-    nextBtn.disabled = state.queueIndex === state.queue.length - 1;
+    const isLastBook = BOOKS.findIndex(b => b.id === state.activeBookTab) === BOOKS.length - 1;
+    nextBtn.disabled = state.queueIndex === state.queue.length - 1 && isLastBook;
   } else {
     prevBtn.disabled = false;
     nextBtn.disabled = false;
   }
+  document.getElementById("pager-count").textContent = `${state.queueIndex + 1} / ${state.queue.length}`;
 
-  prevBtn.textContent = "←";
-  nextBtn.textContent = "→";
-  prevBtn.classList.remove("label");
-  nextBtn.classList.remove("label");
-
-  if (state.mode === "sequential") {
-    const nextId = state.queue[state.queueIndex + 1];
-    const nextFound = nextId ? findVerseById(nextId) : null;
-    if (nextFound && nextFound.lesson.id !== lesson.id) {
-      nextBtn.textContent = `${nextFound.lesson.id}과`;
-      nextBtn.classList.add("label");
-    }
-
-    const prevId = state.queue[state.queueIndex - 1];
-    const prevFound = prevId ? findVerseById(prevId) : null;
-    if (prevFound && prevFound.lesson.id !== lesson.id) {
-      prevBtn.textContent = `${prevFound.lesson.id}과`;
-      prevBtn.classList.add("label");
-    }
-  }
+  renderPracticePanel(verseId, verse);
 
   setLastVerseId(verseId);
 }
@@ -224,10 +367,17 @@ function goNext() {
       state.queue = shuffle(state.queue.slice());
       state.queueIndex = 0;
     }
+  } else if (state.queueIndex >= state.queue.length - 1) {
+    const nextBook = BOOKS[BOOKS.findIndex(b => b.id === state.activeBookTab) + 1];
+    if (nextBook) {
+      state.activeBookTab = nextBook.id;
+      state.queue = getBookVerseIds(nextBook.id);
+      state.queueIndex = 0;
+    }
   } else {
-    state.queueIndex = Math.min(state.queueIndex + 1, state.queue.length - 1);
+    state.queueIndex += 1;
   }
-  state.isFlipped = false;
+  resetPracticeState();
   renderCard();
 }
 
@@ -237,7 +387,7 @@ function goPrev() {
   } else {
     state.queueIndex = Math.max(state.queueIndex - 1, 0);
   }
-  state.isFlipped = false;
+  resetPracticeState();
   renderCard();
 }
 
@@ -257,7 +407,9 @@ function selectScope(scope) {
     btn.classList.toggle("selected", btn.dataset.scope === scope);
   });
   const customList = document.getElementById("custom-picker-list");
-  if (scope === "custom") {
+  const isCustom = scope === "custom";
+  document.querySelector(".modal-actions").style.display = isCustom ? "flex" : "none";
+  if (isCustom) {
     customList.classList.add("visible");
     renderCustomPicker();
   } else {
@@ -331,57 +483,11 @@ function applyRange() {
   state.mode = "random";
   state.queue = shuffle(ids.slice());
   state.queueIndex = 0;
-  state.isFlipped = false;
+  resetPracticeState();
   closeRangeModal();
   updateModeButtons();
   showScreen("card");
   renderCard();
-}
-
-/* ---------- 시작 화면 커스텀 커서 / 매그네틱 버튼 ---------- */
-function initHeroCursor() {
-  const heroSection = document.getElementById("screen-start");
-  const cursor = document.getElementById("hero-cursor");
-  if (!heroSection || !cursor) return;
-  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-
-  let mouseX = -100;
-  let mouseY = -100;
-  let cursorX = -100;
-  let cursorY = -100;
-
-  heroSection.addEventListener("mouseenter", () => {
-    cursor.style.opacity = "1";
-  });
-  heroSection.addEventListener("mouseleave", () => {
-    cursor.style.opacity = "0";
-  });
-  heroSection.addEventListener("mousemove", e => {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-  });
-
-  function raf() {
-    cursorX += (mouseX - cursorX) * 0.18;
-    cursorY += (mouseY - cursorY) * 0.18;
-    cursor.style.transform = `translate3d(${cursorX}px, ${cursorY}px, 0) translate(-50%, -50%)`;
-    requestAnimationFrame(raf);
-  }
-  raf();
-
-  document.querySelectorAll("#screen-start .btn-hero").forEach(btn => {
-    btn.addEventListener("mouseenter", () => cursor.classList.add("cursor-hover"));
-    btn.addEventListener("mouseleave", () => {
-      cursor.classList.remove("cursor-hover");
-      btn.style.transform = "";
-    });
-    btn.addEventListener("mousemove", e => {
-      const rect = btn.getBoundingClientRect();
-      const relX = e.clientX - rect.left - rect.width / 2;
-      const relY = e.clientY - rect.top - rect.height / 2;
-      btn.style.transform = `translate(${relX * 0.15}px, ${relY * 0.25}px)`;
-    });
-  });
 }
 
 /* ---------- 초기화 ---------- */
@@ -407,23 +513,23 @@ function init() {
     renderToc();
   });
   document.getElementById("btn-mode-sequential").addEventListener("click", switchToSequential);
-  document.getElementById("btn-mode-random").addEventListener("click", openRangeModal);
+  document.getElementById("btn-mode-random").addEventListener("click", checkCurrentVerse);
 
-  const flashcard = document.getElementById("flashcard");
+  const verseCard = document.getElementById("verse-card");
   let touchStartX = 0;
   let touchStartY = 0;
   let isHorizontalSwipe = false;
   let swipeHandled = false;
   const SWIPE_THRESHOLD = 50;
 
-  flashcard.addEventListener("touchstart", e => {
+  verseCard.addEventListener("touchstart", e => {
     const t = e.touches[0];
     touchStartX = t.clientX;
     touchStartY = t.clientY;
     isHorizontalSwipe = false;
   }, { passive: true });
 
-  flashcard.addEventListener("touchmove", e => {
+  verseCard.addEventListener("touchmove", e => {
     const t = e.touches[0];
     const dx = t.clientX - touchStartX;
     const dy = t.clientY - touchStartY;
@@ -432,7 +538,7 @@ function init() {
     }
   }, { passive: true });
 
-  flashcard.addEventListener("touchend", e => {
+  verseCard.addEventListener("touchend", e => {
     if (!isHorizontalSwipe) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touchStartX;
@@ -445,43 +551,109 @@ function init() {
     }
   });
 
-  flashcard.addEventListener("click", () => {
+  verseCard.addEventListener("click", () => {
     if (swipeHandled) {
       swipeHandled = false;
       return;
     }
-    state.isFlipped = !state.isFlipped;
-    flashcard.classList.toggle("flipped", state.isFlipped);
+    if (state.mode === "random" && !state.randomRevealed) {
+      state.randomRevealed = true;
+      renderCard();
+    }
   });
-  document.getElementById("btn-initials").addEventListener("click", e => {
-    e.stopPropagation();
-    state.showInitials = !state.showInitials;
+
+  document.getElementById("practice-tabs").addEventListener("click", e => {
+    const btn = e.target.closest(".practice-tab");
+    if (!btn) return;
+    const mode = btn.dataset.mode;
+    state.practiceMode = mode;
+    if (mode === "lineByLine") {
+      state.lineByLineStep = 1;
+    } else if (mode === "progressive") {
+      state.progressiveStage = 0;
+      state.progressiveDone = false;
+      state.revealedHints = new Set();
+    }
     renderCard();
   });
-  document.getElementById("btn-prev").addEventListener("click", e => {
-    e.stopPropagation();
-    goPrev();
+
+  document.getElementById("practice-body").addEventListener("click", e => {
+    const target = e.target.closest("[data-action]");
+    if (!target) return;
+    const action = target.dataset.action;
+    if (action === "lbl-next") {
+      state.lineByLineStep += 1;
+    } else if (action === "toggle-reveal") {
+      const idx = Number(target.dataset.idx);
+      if (state.revealedHints.has(idx)) {
+        state.revealedHints.delete(idx);
+      } else {
+        state.revealedHints.add(idx);
+        const found = findVerseById(state.queue[state.queueIndex]);
+        if (found) {
+          const maskIndices = getMaskIndices(found.verse, state.progressiveStage);
+          const allRevealed = maskIndices.size > 0 && [...maskIndices].every(i => state.revealedHints.has(i));
+          if (allRevealed) {
+            if (state.progressiveStage >= MASK_STAGE_COUNT - 1) {
+              state.progressiveDone = true;
+            } else {
+              state.progressiveStage += 1;
+            }
+          }
+        }
+      }
+    }
+    renderCard();
   });
-  document.getElementById("btn-next").addEventListener("click", e => {
-    e.stopPropagation();
-    goNext();
-  });
+
+  document.getElementById("btn-prev").addEventListener("click", () => goPrev());
+  document.getElementById("btn-next").addEventListener("click", () => goNext());
+
   document.querySelectorAll(".status-chip").forEach(chip => {
-    chip.addEventListener("click", e => {
-      e.stopPropagation();
+    chip.addEventListener("click", () => {
       setVerseStatus(state.queue[state.queueIndex], chip.dataset.status);
       renderCard();
+      if (state.autoAdvance) {
+        clearTimeout(state.autoAdvanceTimer);
+        state.autoAdvanceTimer = setTimeout(() => goNext(), 300);
+      }
     });
   });
 
+  const autoAdvanceChk = document.getElementById("chk-auto-advance");
+  state.autoAdvance = getAutoAdvance();
+  autoAdvanceChk.checked = state.autoAdvance;
+  autoAdvanceChk.addEventListener("change", () => {
+    state.autoAdvance = autoAdvanceChk.checked;
+    setAutoAdvance(state.autoAdvance);
+  });
+
+  document.getElementById("btn-font-decrease").addEventListener("click", () => {
+    const idx = FONT_SIZE_STEPS.indexOf(state.verseFontSize);
+    state.verseFontSize = FONT_SIZE_STEPS[Math.max(idx - 1, 0)];
+    setVerseFontSize(state.verseFontSize);
+    applyVerseFontSize();
+  });
+  document.getElementById("btn-font-increase").addEventListener("click", () => {
+    const idx = FONT_SIZE_STEPS.indexOf(state.verseFontSize);
+    state.verseFontSize = FONT_SIZE_STEPS[Math.min(idx + 1, FONT_SIZE_STEPS.length - 1)];
+    setVerseFontSize(state.verseFontSize);
+    applyVerseFontSize();
+  });
+
   document.querySelectorAll(".range-option").forEach(btn => {
-    btn.addEventListener("click", () => selectScope(btn.dataset.scope));
+    btn.addEventListener("click", () => {
+      selectScope(btn.dataset.scope);
+      if (btn.dataset.scope !== "custom") {
+        applyRange();
+      }
+    });
   });
   document.getElementById("btn-apply-range").addEventListener("click", applyRange);
   document.getElementById("btn-close-modal").addEventListener("click", closeRangeModal);
 
   renderStart();
-  initHeroCursor();
+  initStartHero();
 }
 
 init();
