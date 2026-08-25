@@ -116,14 +116,20 @@ function renderBookTabs() {
   container.innerHTML = "";
 
   const allBtn = document.createElement("button");
-  allBtn.className = "book-tab" + (state.activeBookTab === "all" ? " active" : "");
+  allBtn.type = "button";
+  const allActive = state.activeBookTab === "all";
+  allBtn.className = "book-tab" + (allActive ? " active" : "");
+  allBtn.setAttribute("aria-pressed", String(allActive));
   allBtn.textContent = "전체";
   allBtn.addEventListener("click", () => selectBookTab("all"));
   container.appendChild(allBtn);
 
   BOOKS.forEach(book => {
     const btn = document.createElement("button");
-    btn.className = "book-tab" + (book.id === state.activeBookTab ? " active" : "");
+    btn.type = "button";
+    const isActive = book.id === state.activeBookTab;
+    btn.className = "book-tab" + (isActive ? " active" : "");
+    btn.setAttribute("aria-pressed", String(isActive));
     btn.textContent = book.title;
     btn.addEventListener("click", () => selectBookTab(book.id));
     container.appendChild(btn);
@@ -172,6 +178,7 @@ function renderLessonList() {
   visibleLessons.forEach(({ book, lesson }) => {
     const li = document.createElement("li");
     const btn = document.createElement("button");
+    btn.type = "button";
     btn.className = "lesson-item";
     const statusDots = lesson.verses
       .map(v => {
@@ -236,8 +243,11 @@ function resetPracticeState() {
 function updateModeButtons() {
   const seqBtn = document.getElementById("btn-mode-sequential");
   const randBtn = document.getElementById("btn-mode-random");
-  seqBtn.classList.toggle("active", state.mode === "sequential");
-  randBtn.classList.toggle("active", state.mode === "random");
+  const isSequential = state.mode === "sequential";
+  seqBtn.classList.toggle("active", isSequential);
+  randBtn.classList.toggle("active", !isSequential);
+  seqBtn.setAttribute("aria-pressed", String(isSequential));
+  randBtn.setAttribute("aria-pressed", String(!isSequential));
 }
 
 function switchToSequential() {
@@ -266,10 +276,10 @@ function renderLineByLineHtml(verse) {
 
   const shown = chunks.slice(0, step).join(" ");
   return `
-    <div class="lbl-tap-area" data-action="lbl-next">
-      <div class="lbl-flow">${escapeHtml(shown)}</div>
-      <div class="lbl-hint">눌러서 이어 보기</div>
-    </div>
+    <button type="button" class="lbl-tap-area" data-action="lbl-next">
+      <span class="lbl-flow">${escapeHtml(shown)}</span>
+      <span class="lbl-hint">눌러서 이어 보기</span>
+    </button>
   `;
 }
 
@@ -292,9 +302,9 @@ function renderProgressiveHtml(verse) {
       return `<span class="word">${escapeHtml(word)}</span>`;
     }
     if (state.revealedHints.has(i)) {
-      return `<span class="word revealed" data-action="toggle-reveal" data-idx="${i}">${escapeHtml(word)}</span>`;
+      return `<button type="button" class="word revealed" data-action="toggle-reveal" data-idx="${i}">${escapeHtml(word)}</button>`;
     }
-    return `<span class="blank" data-action="toggle-reveal" data-idx="${i}">?</span>`;
+    return `<button type="button" class="blank" data-action="toggle-reveal" data-idx="${i}" aria-label="가려진 단어 확인">?</button>`;
   });
 
   return `<div class="prog-text">${wordSpans.join(" ")}</div>`;
@@ -306,7 +316,9 @@ function renderInitialsHtml(verse) {
 
 function renderPracticePanel(verseId, verse) {
   document.querySelectorAll(".practice-tab").forEach(tab => {
-    tab.classList.toggle("active", tab.dataset.mode === state.practiceMode);
+    const isActive = tab.dataset.mode === state.practiceMode;
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-pressed", String(isActive));
   });
 
   const cardText = document.getElementById("card-text");
@@ -383,7 +395,9 @@ function renderCard() {
   const rawStatus = getStatusMap()[verseId];
   document.getElementById("card-status-badge").textContent = rawStatus ? STATUS_LABEL[rawStatus] : "";
   document.querySelectorAll(".status-chip").forEach(chip => {
-    chip.classList.toggle("active", chip.dataset.status === rawStatus);
+    const isActive = chip.dataset.status === rawStatus;
+    chip.classList.toggle("active", isActive);
+    chip.setAttribute("aria-pressed", String(isActive));
   });
 
   const prevBtn = document.getElementById("btn-prev");
@@ -456,19 +470,67 @@ function goPrev() {
 }
 
 /* ---------- 랜덤 범위 선택 모달 ---------- */
+let modalTriggerEl = null;
+let modalKeydownHandler = null;
+
+function getFocusableElements(container) {
+  return Array.from(
+    container.querySelectorAll('button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+  ).filter(el => el.offsetParent !== null);
+}
+
 function openRangeModal() {
-  document.getElementById("modal-range").classList.add("visible");
+  modalTriggerEl = document.activeElement;
+  const overlay = document.getElementById("modal-range");
+  const sheet = overlay.querySelector(".modal-sheet");
+  overlay.classList.add("visible");
+  document.body.classList.add("modal-open");
   selectScope(state.pendingScope);
+
+  const focusables = getFocusableElements(sheet);
+  (focusables[0] || sheet).focus();
+
+  modalKeydownHandler = e => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeRangeModal();
+      return;
+    }
+    if (e.key !== "Tab") return;
+    const items = getFocusableElements(sheet);
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+  document.addEventListener("keydown", modalKeydownHandler);
 }
 
 function closeRangeModal() {
   document.getElementById("modal-range").classList.remove("visible");
+  document.body.classList.remove("modal-open");
+  if (modalKeydownHandler) {
+    document.removeEventListener("keydown", modalKeydownHandler);
+    modalKeydownHandler = null;
+  }
+  if (modalTriggerEl) {
+    modalTriggerEl.focus();
+    modalTriggerEl = null;
+  }
 }
 
 function selectScope(scope) {
   state.pendingScope = scope;
   document.querySelectorAll(".range-option").forEach(btn => {
-    btn.classList.toggle("selected", btn.dataset.scope === scope);
+    const isSelected = btn.dataset.scope === scope;
+    btn.classList.toggle("selected", isSelected);
+    btn.setAttribute("aria-pressed", String(isSelected));
   });
   const customList = document.getElementById("custom-picker-list");
   const isCustom = scope === "custom";
@@ -638,10 +700,15 @@ function init() {
   });
 
   document.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.setAttribute("aria-pressed", String(btn.classList.contains("active")));
     btn.addEventListener("click", () => {
       const alreadyActive = btn.classList.contains("active");
       state.tocFilter = alreadyActive ? "all" : btn.dataset.filter;
-      document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", !alreadyActive && b === btn));
+      document.querySelectorAll(".filter-btn").forEach(b => {
+        const isActive = !alreadyActive && b === btn;
+        b.classList.toggle("active", isActive);
+        b.setAttribute("aria-pressed", String(isActive));
+      });
       renderLessonList();
     });
   });
@@ -796,6 +863,9 @@ function init() {
   });
   document.getElementById("btn-apply-range").addEventListener("click", applyRange);
   document.getElementById("btn-close-modal").addEventListener("click", closeRangeModal);
+  document.getElementById("modal-range").addEventListener("click", e => {
+    if (e.target.id === "modal-range") closeRangeModal();
+  });
 
   renderStart();
   initStartHero();

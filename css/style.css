@@ -609,6 +609,13 @@ button {
   align-items: center;
   gap: 5px;
   margin-top: 30px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
 }
 .verse-hint-title {
   font-size: 15px;
@@ -774,7 +781,15 @@ button {
 }
 
 .lbl-tap-area {
+  display: flex;
+  flex-direction: column;
   width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
   cursor: pointer;
 }
 
@@ -815,6 +830,12 @@ button {
   transition: color 0.2s ease;
 }
 .prog-text .word.revealed {
+  display: inline;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
   color: var(--plum-dark);
   font-weight: 700;
   cursor: pointer;
@@ -831,6 +852,7 @@ button {
   background: var(--plum-light);
   border: none;
   border-radius: 7px;
+  font: inherit;
   color: rgba(102, 86, 108, 0.5);
   font-size: 13px;
   font-weight: 600;
@@ -1035,6 +1057,10 @@ button {
 }
 
 /* ---------- Modal ---------- */
+body.modal-open {
+  overflow: hidden;
+}
+
 .modal-overlay {
   display: none;
   position: fixed;
@@ -1374,5 +1400,86 @@ button {
     grid-column: 2;
     grid-row: 4;
     justify-self: center;
+  }
+}
+
+/* =========================================================
+   모바일 (767px 이하) 터치 조작성 · 접근성 · 명암비 개선.
+   이 프로젝트의 반응형은 모바일이 기본 규칙이고 태블릿/데스크톱이
+   위쪽의 min-width 블록으로 추가되는 구조라, "모바일 전용" 규칙은
+   여기 max-width:767px 블록에 넣어 768px 이상에는 전혀 적용되지
+   않게 한다. 색상·폰트·간격·애니메이션은 그대로 두고 터치 영역
+   확보·ARIA 상태·명암비만 다룬다.
+   ========================================================= */
+@media (max-width: 767px) {
+  /* ---- 터치 영역 확보(최소 약 44x44px): 보이지 않는 ::before 오버레이로
+     실제 버튼의 렌더 크기·위치는 그대로 두고 히트 영역만 넓힌다. ---- */
+  .pager-btn,
+  .font-size-btn,
+  .text-link-btn,
+  .help-icon-btn,
+  .toc-home-link,
+  .toc-action-link,
+  .book-tab,
+  .blank,
+  #btn-close-modal,
+  .auto-advance-label {
+    position: relative;
+  }
+  .pager-btn::before,
+  .font-size-btn::before,
+  .text-link-btn::before,
+  .help-icon-btn::before,
+  .toc-home-link::before,
+  .toc-action-link::before,
+  .book-tab::before,
+  .blank::before,
+  #btn-close-modal::before,
+  .auto-advance-label::before {
+    content: "";
+    position: absolute;
+  }
+  .pager-btn::before { inset: -7px -3px; }
+  .font-size-btn::before { inset: -9px -4px; }
+  .font-size-control { gap: 12px; }
+  .text-link-btn::before { inset: -6px -2px; }
+  .help-icon-btn::before { inset: -8px -8px -8px -3px; }
+  .toc-home-link::before { inset: -6px 0; }
+  .toc-action-link::before { inset: -6px 0; }
+  .book-tab::before { inset: -5px 0; }
+  .blank::before { inset: -5px 0; }
+  #btn-close-modal::before { inset: -6px 0; }
+  .auto-advance-label::before { inset: -6px -3px -6px -6px; }
+
+  /* ---- 암송점검 모달: 좌우 여백 확보 + 동적 뷰포트(dvh) 대응 ---- */
+  .modal-sheet {
+    width: calc(100% - 32px);
+    margin: 0 auto;
+    max-height: min(92vh, 92dvh);
+  }
+
+  /* ---- 명암비 개선: opacity로 흐려진 안내 문구를 팔레트 안의
+     더 진한 색으로 교체(새 색상 도입 없이 muted -> plum/ink 계열로) ---- */
+  .lbl-hint {
+    color: var(--plum);
+    opacity: 1;
+    font-size: 13px;
+  }
+  .verse-hint-action {
+    opacity: 1;
+  }
+  .help-popover-body {
+    color: var(--plum);
+  }
+  .pager-count {
+    opacity: 0.85;
+  }
+  .status-label,
+  .status-icon {
+    color: var(--plum);
+  }
+  .status-chip.active .status-icon,
+  .status-chip.active .status-label {
+    color: var(--plum-dark);
   }
 }
