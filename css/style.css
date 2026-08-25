@@ -121,6 +121,10 @@ button {
   color: rgba(102, 86, 108, 0.4);
 }
 
+.quote-char {
+  display: inline-block;
+}
+
 .start-hero {
   position: absolute;
   top: 50%;

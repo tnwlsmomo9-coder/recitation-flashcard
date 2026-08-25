@@ -1,9 +1,7 @@
-let heroStarted = false;
+import { getAllVerseIds, findVerseById } from "./data.js";
+import { getMemorizationChunks } from "./practice.js";
 
-function charsFromText(text) {
-  const unique = Array.from(new Set(text.replace(/\s/g, "").split("")));
-  return unique.join("");
-}
+let heroStarted = false;
 
 const DECODE_POOL = "ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎㅏㅑㅓㅕㅗㅛㅜㅠㅡㅣ0123456789#*%/+-".split("");
 
@@ -77,25 +75,52 @@ function getRandomPosition() {
   return { x, y };
 }
 
-function scrambleQuote(quote, text) {
-  const chars = charsFromText(text);
-  const tl = gsap.timeline();
+// 64구절 중에서 배경 문구용으로 쓸 만한 자연스러운 짧은 발췌문을 count개
+// (중복 없이) 골라온다 — 각 verse에 이미 있는 memorizationChunks(없으면
+// practice.js가 자동 분할)에서 무작위로 한 구를 뽑는다.
+function pickRandomQuoteTexts(count) {
+  const ids = getAllVerseIds().slice();
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+  return ids.slice(0, count).map(id => {
+    const found = findVerseById(id);
+    const chunks = getMemorizationChunks(found.verse);
+    return chunks[Math.floor(Math.random() * chunks.length)];
+  });
+}
 
+// 글자를 무작위 자모/기호로 스크램블하지 않고, 각 음절이 제자리(가로 위치는
+// 고정)에서 아래쪽에서 위로 올라오며 나타나는 효과. 처음부터 끝까지
+// textContent는 최종 글자 그대로다.
+function revealQuoteVertical(quote, text) {
+  quote.innerHTML = "";
+  const spans = text.split("").map(ch => {
+    const span = document.createElement("span");
+    span.className = "quote-char";
+    span.textContent = ch === " " ? " " : ch;
+    return span;
+  });
+  spans.forEach(span => quote.appendChild(span));
+  gsap.set(spans, { y: 10, opacity: 0 });
+
+  const tl = gsap.timeline();
   tl.call(() => {
     const { x, y } = getRandomPosition();
-    gsap.set(quote, { x, y });
+    gsap.set(quote, { x, y, opacity: 1 });
   })
-    .to(quote, {
+    .to(spans, {
       delay: Math.random() * 1.8,
-      duration: 0.7,
+      y: 0,
       opacity: 1,
-      scrambleText: { text, chars, revealDelay: 0.35, speed: 1 },
+      duration: 0.32,
       ease: "power2.out",
+      stagger: 0.035,
     })
     .to(quote, {
-      delay: 0.3,
+      delay: 0.9,
       duration: 0.7,
-      scrambleText: { text: "", chars },
       opacity: 0,
       ease: "power2.in",
     });
@@ -171,7 +196,7 @@ export function initStartHero() {
   const applyCtaCentering = setupCtaCentering();
 
   if (typeof gsap === "undefined") return;
-  gsap.registerPlugin(SplitText, ScrambleTextPlugin);
+  gsap.registerPlugin(SplitText);
 
   const emblem = document.querySelector(".start-emblem");
   if (emblem) {
@@ -179,9 +204,10 @@ export function initStartHero() {
   }
 
   const quotes = gsap.utils.toArray(".quote");
-  quotes.forEach(quote => {
+  const quoteTexts = pickRandomQuoteTexts(quotes.length);
+  quotes.forEach((quote, i) => {
     gsap.set(quote, { position: "absolute", opacity: 0, whiteSpace: "nowrap" });
-    scrambleQuote(quote, quote.textContent ?? "");
+    revealQuoteVertical(quote, quoteTexts[i] ?? "");
   });
 
   const glow = document.getElementById("start-decode-glow");
