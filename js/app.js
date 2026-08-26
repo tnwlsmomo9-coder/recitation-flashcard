@@ -4,7 +4,6 @@ import { toInitials } from "./initials.js";
 import { getMaskIndices, MASK_STAGE_COUNT, splitIntoWordPairs } from "./practice.js";
 import { initStartHero } from "./startHero.js";
 
-const STATUS_SYMBOL = { memorized: "✓", partial: "◐", learning: "○" };
 const STATUS_LABEL = { memorized: "✓ 암기 완료", partial: "◐ 부분 암기", learning: "○ 더 익히기" };
 const FONT_SIZE_STEPS = [18, 20, 22, 24, 26];
 const LINE_HEIGHT_SCALE_STEPS = [1, 0.97, 0.94, 0.9, 0.86];
@@ -27,6 +26,8 @@ const state = {
   progressiveStage: 0,
   progressiveDone: false,
   revealedHints: new Set(),
+  initialsStage: "letters",
+  showRecitationHint: false,
   autoAdvance: true,
   autoAdvanceTimer: null,
   verseFontSize: clampToFontStep(getVerseFontSize()),
@@ -180,13 +181,17 @@ function renderLessonList() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "lesson-item";
-    const statusDots = lesson.verses
+    const verseRows = lesson.verses
       .map(v => {
         const status = statusMap[v.id] || "learning";
-        return `<span class="status-dot status-${status}">${STATUS_SYMBOL[status]}</span>`;
+        return `
+          <div class="lesson-verse-row">
+            <span class="lesson-verse-ref">${v.ref}</span>
+            <span class="status-dot status-${status}">${STATUS_LABEL[status]}</span>
+          </div>
+        `;
       })
       .join("");
-    const refs = lesson.verses.map(v => v.ref).join(" · ");
     const lessonNumberLabel = isAll ? `${book.title} ${lesson.id}과` : `${lesson.id}과`;
     btn.innerHTML = `
       <div class="lesson-main">
@@ -194,9 +199,8 @@ function renderLessonList() {
           <span class="lesson-number type-caption">${lessonNumberLabel}</span>
           <span class="lesson-title">${lesson.title}</span>
         </div>
-        <div class="lesson-refs type-caption">${refs}</div>
+        <div class="lesson-verses">${verseRows}</div>
       </div>
-      <span class="lesson-status">${statusDots}</span>
     `;
     btn.addEventListener("click", () => enterLesson(book.id, lesson.id));
     li.appendChild(btn);
@@ -237,6 +241,8 @@ function resetPracticeState() {
   state.progressiveStage = 0;
   state.progressiveDone = false;
   state.revealedHints = new Set();
+  state.initialsStage = "letters";
+  state.showRecitationHint = false;
   state.randomRevealed = false;
 }
 
@@ -298,8 +304,11 @@ function renderProgressiveHtml(verse) {
   if (state.progressiveDone) {
     return `
       <div class="prog-done">
-        <div class="practice-feedback prog-done-heading">여기까지 기억했어요</div>
-        <div class="lbl-text">${escapeHtml(verse.text)}</div>
+        <div class="practice-feedback prog-done-heading">빈칸 연습을 마쳤어요</div>
+        <div class="practice-actions">
+          <button type="button" class="btn btn-primary btn-block" data-action="prog-to-initials">첫 글자로 도전하기</button>
+          <button type="button" class="btn btn-outline btn-block" data-action="prog-restart">빈칸 다시 연습</button>
+        </div>
       </div>
     `;
   }
@@ -322,7 +331,22 @@ function renderProgressiveHtml(verse) {
 }
 
 function renderInitialsHtml(verse) {
-  return `<div class="initials-text">${escapeHtml(toInitials(verse.text))}</div>`;
+  if (state.initialsStage === "hidden") {
+    return `
+      <div class="initials-check">
+        <div class="practice-feedback">말씀을 모두 떠올리며 암송해보세요</div>
+        <div class="practice-actions">
+          <button type="button" class="btn btn-primary btn-block" data-action="initials-reveal">전체 본문 확인</button>
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div class="initials-text">${escapeHtml(toInitials(verse.text))}</div>
+    <div class="practice-actions">
+      <button type="button" class="btn btn-outline btn-block" data-action="initials-check">암송 확인하기</button>
+    </div>
+  `;
 }
 
 function renderPracticePanel(verseId, verse) {
@@ -361,10 +385,19 @@ function renderPracticePanel(verseId, verse) {
 
   const isFull = isRandom || state.practiceMode === "full";
   cardText.style.display = isFull ? "" : "none";
-  body.style.display = isFull ? "none" : "flex";
+  // "첫 글자" 탭의 전체 본문 확인(→ 전체 탭 이동) 경로로 왔을 때만, 전체
+  // 탭 아래에 암송 상태 기록 안내를 보여준다. 전체 탭을 직접 눌러
+  // 들어왔을 때는 보이지 않는다(practice-tabs 클릭 시 항상 꺼짐).
+  const showRecitationHint = state.practiceMode === "full" && !isRandom && state.showRecitationHint;
+  body.style.display = isFull ? (showRecitationHint ? "flex" : "none") : "flex";
+  // 이 안내 문구는 한 줄뿐이라, 다른 연습 모드용으로 큰 min-height/여백을
+  // 그대로 쓰면 말씀 본문·상태 기록 영역과의 간격이 불필요하게 커진다.
+  body.classList.toggle("practice-body-compact", showRecitationHint);
 
   if (isFull) {
-    body.innerHTML = "";
+    body.innerHTML = showRecitationHint
+      ? `<div class="practice-feedback">아래에서 암송 상태를 기록해보세요</div>`
+      : "";
     return;
   }
 
@@ -788,12 +821,17 @@ function init() {
     if (!btn) return;
     const mode = btn.dataset.mode;
     state.practiceMode = mode;
+    // 탭을 직접 눌러 들어온 것이므로("이 루트"가 아니므로) 첫 글자→전체
+    // 확인 경로에서만 뜨는 암송 상태 기록 안내는 끈다.
+    state.showRecitationHint = false;
     if (mode === "lineByLine") {
       state.lineByLineStep = 1;
     } else if (mode === "progressive") {
       state.progressiveStage = 0;
       state.progressiveDone = false;
       state.revealedHints = new Set();
+    } else if (mode === "initials") {
+      state.initialsStage = "letters";
     }
     renderCard();
   });
@@ -823,6 +861,21 @@ function init() {
           }
         }
       }
+    } else if (action === "prog-to-initials") {
+      state.practiceMode = "initials";
+      state.initialsStage = "letters";
+    } else if (action === "prog-restart") {
+      state.progressiveStage = 0;
+      state.progressiveDone = false;
+      state.revealedHints = new Set();
+    } else if (action === "initials-check") {
+      state.initialsStage = "hidden";
+    } else if (action === "initials-reveal") {
+      // 첫 글자 탭에서 "전체 본문 확인"을 누르면 전체 탭으로 넘어가고,
+      // 이 경로로 왔을 때만 전체 탭 아래에 암송 상태 기록 안내가 뜬다.
+      state.practiceMode = "full";
+      state.initialsStage = "letters";
+      state.showRecitationHint = true;
     }
     renderCard();
   });

@@ -121,10 +121,6 @@ button {
   color: rgba(102, 86, 108, 0.4);
 }
 
-.quote-char {
-  display: inline-block;
-}
-
 .start-hero {
   position: absolute;
   top: 50%;
@@ -171,6 +167,15 @@ button {
   color: var(--plum);
   opacity: 0.45;
   font-size: 12px;
+}
+
+.quote-overlay-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(102, 86, 108, 0.1);
 }
 
 .start-decode-glow {
@@ -508,19 +513,27 @@ button {
   color: var(--ink);
 }
 
-.lesson-refs {
+.lesson-verses {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 20px;
+  row-gap: 3px;
+}
+
+.lesson-verse-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.lesson-verse-ref {
   color: var(--muted);
 }
 
-.lesson-status {
-  display: flex;
-  gap: 6px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
 .status-dot {
-  font-size: 16px;
+  font-size: 13px;
+  font-weight: 600;
   line-height: 1;
 }
 .status-dot.status-memorized { color: var(--plum); }
@@ -779,6 +792,15 @@ button {
   box-sizing: border-box;
 }
 
+/* 전체 탭에서 "암송 상태를 기록해보세요" 한 줄만 보여줄 때는 다른 연습
+   모드용 큰 min-height/여백이 필요 없으므로 줄인다 — 말씀 본문/상태 기록
+   영역과의 간격을 좁히기 위함. */
+.practice-body.practice-body-compact {
+  min-height: 0;
+  margin-top: 8px;
+  padding-bottom: 8px;
+}
+
 .lbl-text {
   width: 100%;
   max-width: 640px;
@@ -830,9 +852,11 @@ button {
 }
 
 .practice-feedback {
+  width: 100%;
   color: var(--plum);
   font-size: 14px;
   font-weight: 600;
+  text-align: center;
 }
 
 .prog-text {
@@ -887,10 +911,23 @@ button {
   to { opacity: 1; }
 }
 
+.prog-done {
+  text-align: center;
+}
+
 .prog-done-heading {
   font-size: 16px;
   font-weight: 700;
   margin-bottom: 8px;
+}
+
+.practice-actions {
+  width: 100%;
+  max-width: 360px;
+  margin: 12px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .initials-text {
@@ -904,6 +941,18 @@ button {
   color: var(--plum-dark);
   word-break: keep-all;
   overflow-wrap: break-word;
+}
+
+.initials-check {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+.initials-check .practice-actions {
+  margin-top: 0;
 }
 
 /* ---- 이전 / 다음 ---- */
