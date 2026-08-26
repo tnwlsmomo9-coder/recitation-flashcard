@@ -1,0 +1,14 @@
+{
+  "lang": "ko",
+  "name": "신천중부교회 제자훈련 말씀암송앱",
+  "short_name": "말씀암송",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#F8F5EE",
+  "theme_color": "#66566C",
+  "icons": [
+    { "src": "js/icon-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "js/icon-512x512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

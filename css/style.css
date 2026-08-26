@@ -357,19 +357,22 @@ button {
 
 .toc-home-link {
   min-width: 0;
-  padding: 5px 10px;
-  gap: 5px;
+  padding: 7px 12px;
+  gap: 6px;
   background: none;
   border: none;
 }
 .toc-home-link .start-kicker {
-  font-size: 11px;
+  font-size: 13px;
+  font-weight: 600;
   letter-spacing: 0;
   white-space: nowrap;
 }
-.toc-home-link .kicker-dash {
-  font-size: 10px;
+.toc-home-icon {
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
+  color: var(--plum);
 }
 
 .toc-action-link {
@@ -1343,14 +1346,15 @@ body.modal-open {
     grid-row: 1;
   }
   .toc-home-link {
-    padding: 6px 14px;
+    padding: 8px 16px;
   }
   .toc-home-link .start-kicker {
-    font-size: 14px;
-    letter-spacing: 0.1em;
+    font-size: 15px;
+    letter-spacing: 0.02em;
   }
-  .toc-home-link .kicker-dash {
-    font-size: 12px;
+  .toc-home-icon {
+    width: 17px;
+    height: 17px;
   }
   .book-tabs {
     grid-column: 1;
@@ -1511,7 +1515,7 @@ body.modal-open {
   .font-size-control { gap: 12px; }
   .text-link-btn::before { inset: -6px -2px; }
   .help-icon-btn::before { inset: -8px -8px -8px -3px; }
-  .toc-home-link::before { inset: -6px 0; }
+  .toc-home-link::before { inset: -8px 0; }
   .toc-action-link::before { inset: -6px 0; }
   .book-tab::before { inset: -5px 0; }
   .blank::before { inset: -5px 0; }

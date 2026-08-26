@@ -32,7 +32,12 @@ const state = {
   autoAdvanceTimer: null,
   verseFontSize: clampToFontStep(getVerseFontSize()),
   randomRevealed: false,
-  singleVerseCheck: false
+  singleVerseCheck: false,
+  // 암송점검(여러 구절) 중에 말씀익히기로 잠깐 넘어갔을 때, 그 여러 구절
+  // 세션(큐+위치)을 잠시 담아둔다 — 다시 암송점검으로 돌아오면 이걸 복원해
+  // 1구절로 좁아지지 않고 원래 세션이 이어지게 한다. null이면 복원할
+  // 세션이 없다는 뜻(이 경우 암송점검 토글은 현재 구절 하나만 확인한다).
+  pausedRandomSession: null
 };
 
 function shuffle(arr) {
@@ -79,6 +84,7 @@ function continueLearning() {
   state.activeBookTab = book.id;
   state.mode = "sequential";
   state.singleVerseCheck = false;
+  state.pausedRandomSession = null;
   state.queue = getBookVerseIds(book.id);
   state.queueIndex = state.queue.indexOf(lastId);
   resetPracticeState();
@@ -212,6 +218,7 @@ function enterLesson(bookId, lessonId) {
   state.activeBookTab = bookId;
   state.mode = "sequential";
   state.singleVerseCheck = false;
+  state.pausedRandomSession = null;
   state.queue = getBookVerseIds(bookId);
   const firstVerseId = getLessonVerseIds(bookId, lessonId)[0];
   state.queueIndex = state.queue.indexOf(firstVerseId);
@@ -222,6 +229,22 @@ function enterLesson(bookId, lessonId) {
 }
 
 function checkCurrentVerse() {
+  // 암송점검(여러 구절) 세션 중 말씀익히기로 넘어갔다가 다시 암송점검을
+  // 누른 것이면, 새로 1구절만 확인하는 대신 그 원래 세션을 그대로
+  // 이어간다.
+  if (state.pausedRandomSession) {
+    const { queue, queueIndex } = state.pausedRandomSession;
+    state.pausedRandomSession = null;
+    state.mode = "random";
+    state.singleVerseCheck = false;
+    state.queue = queue;
+    state.queueIndex = queueIndex;
+    resetPracticeState();
+    updateModeButtons();
+    renderCard();
+    return;
+  }
+
   const currentVerseId = state.queue[state.queueIndex];
   if (!currentVerseId) return;
   state.mode = "random";
@@ -260,6 +283,12 @@ function switchToSequential() {
   const currentVerseId = state.queue[state.queueIndex];
   const found = findVerseById(currentVerseId);
   if (!found) return;
+  // 여러 구절짜리 암송점검(단일 구절 확인이 아닌) 세션을 두고 말씀익히기로
+  // 넘어가는 것이면, 나중에 암송점검으로 되돌아왔을 때 이어갈 수 있게
+  // 그 세션(큐+위치)을 잠시 담아둔다.
+  if (state.mode === "random" && !state.singleVerseCheck) {
+    state.pausedRandomSession = { queue: state.queue.slice(), queueIndex: state.queueIndex };
+  }
   const { book } = found;
   state.activeBookTab = book.id;
   state.mode = "sequential";
@@ -368,13 +397,18 @@ function renderPracticePanel(verseId, verse) {
 
   const isRandom = state.mode === "random";
   const isCollapsed = isRandom && !state.randomRevealed;
+  // 나눠보기/빈칸암기는 단계적으로 훑어보는 연습일 뿐이라 암송 상태 확인
+  // 칩을 두지 않는다 — 상태 기록은 전체 탭과, 첫 글자 끝의 완전 암송
+  // 확인 흐름에서만 하도록 남겨둔다. 현재 상태를 보여주는 배지
+  // (card-status-badge)는 실행 UI가 아니라 그대로 둔다.
+  const hideStatusCheck = state.practiceMode === "lineByLine" || state.practiceMode === "progressive";
   verseCard.classList.toggle("collapsed", isCollapsed);
   tapHint.style.display = isCollapsed ? "flex" : "none";
   fontControl.style.display = isCollapsed ? "none" : "flex";
   tabs.style.display = isCollapsed || isRandom ? "none" : "flex";
-  statusPanel.style.display = isCollapsed ? "none" : "flex";
+  statusPanel.style.display = isCollapsed || hideStatusCheck ? "none" : "flex";
   statusBadge.style.display = isCollapsed ? "none" : "";
-  autoAdvanceRow.style.display = isCollapsed || state.singleVerseCheck ? "none" : "flex";
+  autoAdvanceRow.style.display = isCollapsed || state.singleVerseCheck || hideStatusCheck ? "none" : "flex";
 
   if (isCollapsed) {
     cardText.style.display = "none";
@@ -626,7 +660,12 @@ function applyRange() {
   let ids;
   switch (state.pendingScope) {
     case "currentBook":
-      ids = getBookVerseIds(state.activeBookTab);
+      // "전체" 책 탭이 선택된 상태에서는 특정 권이 없으므로 전체 구절로
+      // 대체한다 — 안 그러면 getBookVerseIds("all")가 빈 배열을 돌려줘
+      // 범위가 없다는 경고만 뜨고, 이전에 남아 있던 상태(예: 말씀익히기
+      // 페이지에서 단일 구절 확인으로 들어갔던 state.singleVerseCheck/
+      // queue)가 그대로 남아버린다.
+      ids = state.activeBookTab === "all" ? getAllVerseIds() : getBookVerseIds(state.activeBookTab);
       break;
     case "all":
       ids = getAllVerseIds();
@@ -652,6 +691,7 @@ function applyRange() {
 
   state.mode = "random";
   state.singleVerseCheck = false;
+  state.pausedRandomSession = null;
   state.queue = shuffle(ids.slice());
   state.queueIndex = 0;
   resetPracticeState();
@@ -763,6 +803,12 @@ function init() {
   });
 
   document.getElementById("btn-back-toc").addEventListener("click", () => {
+    // 말씀익히기 페이지에서 "현재 구절만" 확인하던 상태(암송점검 토글로
+    // 들어간 단일 구절 확인)를 목록으로 나가면서 닫는다 — 안 그러면 이
+    // 값이 남아 있다가 목록의 암송점검이 다시 열릴 때 영향을 줄 수 있다.
+    state.mode = "sequential";
+    state.singleVerseCheck = false;
+    state.pausedRandomSession = null;
     showScreen("toc");
     renderToc();
   });
