@@ -1,7 +1,7 @@
 import { BOOKS, findVerseById, getAllVerseIds, getBookVerseIds, getLessonVerseIds } from "./data.js";
 import { getLastVerseId, setLastVerseId, getStatusMap, getVerseStatus, setVerseStatus, getAutoAdvance, setAutoAdvance, getVerseFontSize, setVerseFontSize } from "./storage.js";
 import { toInitials } from "./initials.js";
-import { getMemorizationChunks, getMaskIndices, MASK_STAGE_COUNT } from "./practice.js";
+import { getMaskIndices, MASK_STAGE_COUNT, splitIntoWordPairs } from "./practice.js";
 import { initStartHero } from "./startHero.js";
 
 const STATUS_SYMBOL = { memorized: "✓", partial: "◐", learning: "○" };
@@ -266,7 +266,7 @@ function switchToSequential() {
 }
 
 function renderLineByLineHtml(verse) {
-  const chunks = getMemorizationChunks(verse);
+  const chunks = splitIntoWordPairs(verse.text);
   const step = Math.min(state.lineByLineStep, chunks.length);
   const isDone = step >= chunks.length;
 
@@ -274,10 +274,21 @@ function renderLineByLineHtml(verse) {
     return `<div class="verse-text-inner">${escapeHtml(verse.text)}</div>`;
   }
 
-  const shown = chunks.slice(0, step).join(" ");
+  const shownChunks = chunks.slice(0, step);
+  // 방금 새로 나온 마지막 조각에만 등장 효과를 주고, 이전에 이미 보이던
+  // 조각들은 다시 렌더링돼도 애니메이션이 재생되지 않게 한다. 각 조각은
+  // white-space:nowrap이라 화면 폭 때문에 두 어절 내부가 서로 다른 줄로
+  // 쪼개지지 않고, 조각과 조각 사이에서만 줄바꿈된다.
+  const flow = shownChunks
+    .map((chunk, i) => {
+      const cls = i === shownChunks.length - 1 ? "lbl-chunk lbl-chunk-new" : "lbl-chunk";
+      return `<span class="${cls}">${escapeHtml(chunk)}</span>`;
+    })
+    .join(" ");
+
   return `
     <button type="button" class="lbl-tap-area" data-action="lbl-next">
-      <span class="lbl-flow">${escapeHtml(shown)}</span>
+      <span class="lbl-flow">${flow}</span>
       <span class="lbl-hint">눌러서 이어 보기</span>
     </button>
   `;
@@ -766,8 +777,8 @@ function init() {
       swipeHandled = false;
       return;
     }
-    if (state.mode === "random" && !state.randomRevealed) {
-      state.randomRevealed = true;
+    if (state.mode === "random") {
+      state.randomRevealed = !state.randomRevealed;
       renderCard();
     }
   });
@@ -820,7 +831,11 @@ function init() {
   document.getElementById("btn-next").addEventListener("click", () => goNext());
 
   document.querySelectorAll(".status-chip").forEach(chip => {
-    chip.addEventListener("click", () => {
+    chip.addEventListener("click", e => {
+      // status-chip은 verse-card 안에 있어서, 막지 않으면 클릭이 verseCard의
+      // 뒤집기(random 모드 collapse/reveal 토글) 리스너까지 버블링돼 상태를
+      // 고른 직후 카드가 도로 뒤집혀 버린다.
+      e.stopPropagation();
       setVerseStatus(state.queue[state.queueIndex], chip.dataset.status);
       renderCard();
       if (state.autoAdvance) {
@@ -840,13 +855,16 @@ function init() {
 
   initAutoAdvanceHelp();
 
-  document.getElementById("btn-font-decrease").addEventListener("click", () => {
+  document.getElementById("btn-font-decrease").addEventListener("click", e => {
+    // font-size-control도 verse-card 안에 있어 같은 이유로 버블링을 막는다.
+    e.stopPropagation();
     const idx = FONT_SIZE_STEPS.indexOf(state.verseFontSize);
     state.verseFontSize = FONT_SIZE_STEPS[Math.max(idx - 1, 0)];
     setVerseFontSize(state.verseFontSize);
     applyVerseFontSize();
   });
-  document.getElementById("btn-font-increase").addEventListener("click", () => {
+  document.getElementById("btn-font-increase").addEventListener("click", e => {
+    e.stopPropagation();
     const idx = FONT_SIZE_STEPS.indexOf(state.verseFontSize);
     state.verseFontSize = FONT_SIZE_STEPS[Math.min(idx + 1, FONT_SIZE_STEPS.length - 1)];
     setVerseFontSize(state.verseFontSize);

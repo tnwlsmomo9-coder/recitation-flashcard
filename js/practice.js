@@ -55,6 +55,19 @@ export function getMemorizationChunks(verse) {
   return autoChunk(verse.text);
 }
 
+// 공백 기준으로 앞에서부터 2어절씩 묶는다(어절/조사 중간은 절대 안 쪼갠다).
+// 어절 수가 홀수면 마지막 조각은 1어절만 남는다. autoChunk와 달리 의미 단위가
+// 아니라 길이만 보는 기계적 분할 — "나눠보기" 진행 단위처럼 항상 균일한
+// 크기의 조각이 필요할 때 쓴다.
+export function splitIntoWordPairs(text) {
+  const words = splitWords(text);
+  const chunks = [];
+  for (let i = 0; i < words.length; i += 2) {
+    chunks.push(words.slice(i, i + 2).join(" "));
+  }
+  return chunks;
+}
+
 // 의미가 약한 접속어/부사 — 자동 우선순위 계산 시 감점 대상(핵심 명사·동사보다 나중에 가림)
 const WEAK_FUNCTION_WORDS = [
   "그리고", "그러나", "그러므로", "그런즉", "또한", "오직", "다만",

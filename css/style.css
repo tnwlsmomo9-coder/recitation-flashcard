@@ -116,7 +116,7 @@ button {
   position: absolute;
   opacity: 0;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: rgba(102, 86, 108, 0.4);
 }
@@ -233,14 +233,21 @@ button {
 }
 
 .start-link-btn {
-  background: none;
-  border: none;
+  background: transparent;
+  border: 1.5px solid var(--plum);
+  border-radius: 999px;
   color: var(--plum);
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: underline;
-  padding: 4px;
+  font-size: 15px;
+  font-weight: 700;
   font-family: var(--font);
+  padding: 13px 30px;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+.start-link-btn:hover {
+  background: var(--plum-light);
+}
+.start-link-btn:active {
+  transform: scale(0.97);
 }
 
 .start-cta {
@@ -805,6 +812,13 @@ button {
   line-height: 1.5;
   word-break: keep-all;
   overflow-wrap: break-word;
+}
+.lbl-chunk {
+  display: inline-block;
+  white-space: nowrap;
+}
+.lbl-chunk-new {
+  animation: reveal-fade 0.3s ease;
 }
 
 .lbl-hint {
