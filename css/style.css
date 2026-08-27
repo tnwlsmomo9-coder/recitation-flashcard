@@ -498,6 +498,15 @@ button {
   background: var(--plum-light);
 }
 
+/* 마지막으로 보던(=앱이 백그라운드로 갈 때 열려 있던) 말씀 표시 */
+.lesson-verse-zone.last-closed {
+  background: rgba(102, 86, 108, 0.08);
+}
+.lesson-verse-zone.last-closed:hover,
+.lesson-verse-zone.last-closed:active {
+  background: var(--plum-light);
+}
+
 .lesson-verse-ordinal {
   color: var(--plum);
   font-weight: 700;

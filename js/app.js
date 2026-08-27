@@ -163,6 +163,7 @@ function renderLessonList() {
   const list = document.getElementById("lesson-list");
   list.innerHTML = "";
   const statusMap = getStatusMap();
+  const lastVerseId = getLastVerseId();
 
   const query = state.tocSearch.trim();
   // 검색어가 있으면 지금 어느 권 탭을 보고 있든 상관없이 전체 권에서 찾는다.
@@ -207,7 +208,7 @@ function renderLessonList() {
       const status = statusMap[v.id] || "learning";
       const verseZone = document.createElement("button");
       verseZone.type = "button";
-      verseZone.className = "lesson-verse-zone";
+      verseZone.className = "lesson-verse-zone" + (v.id === lastVerseId ? " last-closed" : "");
       verseZone.innerHTML = `
         <span class="lesson-verse-ordinal">${VERSE_ORDINAL_MARKS[i] || ""}</span>
         <span class="lesson-verse-ref">${v.ref}</span>
@@ -1091,6 +1092,19 @@ function init() {
   document.getElementById("btn-close-modal").addEventListener("click", closeRangeModal);
   document.getElementById("modal-range").addEventListener("click", e => {
     if (e.target.id === "modal-range") closeRangeModal();
+  });
+
+  // PWA를 백그라운드로 보내도(홈으로 나가기/앱 전환 등) 웹뷰가 그대로
+  // 살아 있다가 다시 열리면 나갈 때 보이던 화면이 그대로 이어서
+  // 보인다 — 암송 화면(카드)에 있다가 나가면 다음에 열었을 때 목록
+  // 대신 그 화면이 바로 보이는 문제. 백그라운드로 가는 시점에 목차로
+  // 미리 전환해 둬서, 다시 열었을 때는 항상 목록부터 보이게 한다(어느
+  // 말씀을 보고 있었는지는 목록의 연한보라색 표시로 확인할 수 있다).
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden") return;
+    if (!document.getElementById("screen-card").classList.contains("active")) return;
+    showScreen("toc");
+    renderToc();
   });
 
   initStartHero();
