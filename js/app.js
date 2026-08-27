@@ -1,10 +1,12 @@
 import { BOOKS, findVerseById, getAllVerseIds, getBookVerseIds, getLessonVerseIds } from "./data.js";
 import { getLastVerseId, setLastVerseId, getStatusMap, getVerseStatus, setVerseStatus, getAutoAdvance, setAutoAdvance, getVerseFontSize, setVerseFontSize } from "./storage.js";
 import { toInitials } from "./initials.js";
-import { getMaskIndices, MASK_STAGE_COUNT, splitIntoWordPairs } from "./practice.js";
-import { initStartHero } from "./startHero.js";
+import { getMaskIndices, MASK_STAGE_COUNT, splitIntoWords } from "./practice.js";
+import { initStartHero, restartStartHero } from "./startHero.js";
 
 const STATUS_LABEL = { memorized: "✓ 암기 완료", partial: "◐ 부분 암기", learning: "○ 더 익히기" };
+// 한 과 안에서 몇 번째 말씀인지 표시하는 원문자 — 과 번호와는 별개의 표시다.
+const VERSE_ORDINAL_MARKS = ["❶", "❷", "❸", "❹"];
 const FONT_SIZE_STEPS = [18, 20, 22, 24, 26];
 const LINE_HEIGHT_SCALE_STEPS = [1, 0.97, 0.94, 0.9, 0.86];
 
@@ -19,8 +21,12 @@ const state = {
   queueIndex: 0,
   pendingScope: "currentBook",
   pendingCustomIds: new Set(),
+  pendingCustomOpenBooks: new Set(),
   tocFilter: "all",
   tocSearch: "",
+  // 목차에서 특정 말씀으로 들어가기 직전의 스크롤 위치. "‹ 목차"로
+  // 돌아왔을 때 이 위치로 복원한다.
+  tocScrollY: 0,
   practiceMode: "full",
   lineByLineStep: 1,
   progressiveStage: 0,
@@ -71,10 +77,6 @@ function showScreen(name) {
 }
 
 /* ---------- 시작 화면 ---------- */
-function renderStart() {
-  document.getElementById("btn-continue-start").style.display = getLastVerseId() ? "block" : "none";
-}
-
 function continueLearning() {
   const lastId = getLastVerseId();
   if (!lastId) return;
@@ -184,44 +186,48 @@ function renderLessonList() {
 
   visibleLessons.forEach(({ book, lesson }) => {
     const li = document.createElement("li");
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "lesson-item";
-    const verseRows = lesson.verses
-      .map(v => {
-        const status = statusMap[v.id] || "learning";
-        return `
-          <div class="lesson-verse-row">
-            <span class="lesson-verse-ref">${v.ref}</span>
-            <span class="status-dot status-${status}">${STATUS_LABEL[status]}</span>
-          </div>
-        `;
-      })
-      .join("");
+    li.className = "lesson-item";
+
     const lessonNumberLabel = isAll ? `${book.title} ${lesson.id}과` : `${lesson.id}과`;
-    btn.innerHTML = `
-      <div class="lesson-main">
-        <div class="lesson-heading">
-          <span class="lesson-number type-caption">${lessonNumberLabel}</span>
-          <span class="lesson-title">${lesson.title}</span>
-        </div>
-        <div class="lesson-verses">${verseRows}</div>
-      </div>
+    const titleZone = document.createElement("button");
+    titleZone.type = "button";
+    titleZone.className = "lesson-title-zone";
+    titleZone.innerHTML = `
+      <span class="lesson-heading">
+        <span class="lesson-number type-caption">${lessonNumberLabel}</span>
+        <span class="lesson-title">${lesson.title}</span>
+      </span>
     `;
-    btn.addEventListener("click", () => enterLesson(book.id, lesson.id));
-    li.appendChild(btn);
+    titleZone.addEventListener("click", () => enterLesson(book.id, lesson.id));
+    li.appendChild(titleZone);
+
+    lesson.verses.forEach((v, i) => {
+      const status = statusMap[v.id] || "learning";
+      const verseZone = document.createElement("button");
+      verseZone.type = "button";
+      verseZone.className = "lesson-verse-zone";
+      verseZone.innerHTML = `
+        <span class="lesson-verse-ordinal">${VERSE_ORDINAL_MARKS[i] || ""}</span>
+        <span class="lesson-verse-ref">${v.ref}</span>
+        <span class="status-dot status-${status}">${STATUS_LABEL[status]}</span>
+      `;
+      verseZone.addEventListener("click", () => enterLesson(book.id, lesson.id, i));
+      li.appendChild(verseZone);
+    });
+
     list.appendChild(li);
   });
 }
 
-function enterLesson(bookId, lessonId) {
+function enterLesson(bookId, lessonId, verseIndex = 0) {
+  state.tocScrollY = window.scrollY;
   state.activeBookTab = bookId;
   state.mode = "sequential";
   state.singleVerseCheck = false;
   state.pausedRandomSession = null;
   state.queue = getBookVerseIds(bookId);
-  const firstVerseId = getLessonVerseIds(bookId, lessonId)[0];
-  state.queueIndex = state.queue.indexOf(firstVerseId);
+  const targetVerseId = getLessonVerseIds(bookId, lessonId)[verseIndex];
+  state.queueIndex = state.queue.indexOf(targetVerseId);
   resetPracticeState();
   updateModeButtons();
   showScreen("card");
@@ -301,7 +307,7 @@ function switchToSequential() {
 }
 
 function renderLineByLineHtml(verse) {
-  const chunks = splitIntoWordPairs(verse.text);
+  const chunks = splitIntoWords(verse.text);
   const step = Math.min(state.lineByLineStep, chunks.length);
   const isDone = step >= chunks.length;
 
@@ -312,7 +318,7 @@ function renderLineByLineHtml(verse) {
   const shownChunks = chunks.slice(0, step);
   // 방금 새로 나온 마지막 조각에만 등장 효과를 주고, 이전에 이미 보이던
   // 조각들은 다시 렌더링돼도 애니메이션이 재생되지 않게 한다. 각 조각은
-  // white-space:nowrap이라 화면 폭 때문에 두 어절 내부가 서로 다른 줄로
+  // white-space:nowrap이라 화면 폭 때문에 어절 내부가 서로 다른 줄로
   // 쪼개지지 않고, 조각과 조각 사이에서만 줄바꿈된다.
   const flow = shownChunks
     .map((chunk, i) => {
@@ -335,8 +341,7 @@ function renderProgressiveHtml(verse) {
       <div class="prog-done">
         <div class="practice-feedback prog-done-heading">빈칸 연습을 마쳤어요</div>
         <div class="practice-actions">
-          <button type="button" class="btn btn-primary btn-block" data-action="prog-to-initials">첫 글자로 도전하기</button>
-          <button type="button" class="btn btn-outline btn-block" data-action="prog-restart">빈칸 다시 연습</button>
+          <button type="button" class="btn btn-outline btn-chip" data-action="prog-restart">빈칸 다시 연습</button>
         </div>
       </div>
     `;
@@ -365,7 +370,7 @@ function renderInitialsHtml(verse) {
       <div class="initials-check">
         <div class="practice-feedback">말씀을 모두 떠올리며 암송해보세요</div>
         <div class="practice-actions">
-          <button type="button" class="btn btn-primary btn-block" data-action="initials-reveal">전체 본문 확인</button>
+          <button type="button" class="btn btn-primary btn-chip" data-action="initials-reveal">전체 본문 확인</button>
         </div>
       </div>
     `;
@@ -373,7 +378,7 @@ function renderInitialsHtml(verse) {
   return `
     <div class="initials-text">${escapeHtml(toInitials(verse.text))}</div>
     <div class="practice-actions">
-      <button type="button" class="btn btn-outline btn-block" data-action="initials-check">암송 확인하기</button>
+      <button type="button" class="btn btn-outline btn-chip" data-action="initials-check">암송 확인하기</button>
     </div>
   `;
 }
@@ -465,7 +470,10 @@ function renderCard() {
   const { book, lesson, verse } = found;
 
   document.getElementById("card-meta").textContent = `${book.title} · ${lesson.id}과`;
-  document.getElementById("card-title").textContent = lesson.title;
+  // 과 번호와는 별개로, 한 과 안에서 몇 번째 말씀인지 원문자로 구분해 붙인다
+  // (예: "그리스도 안의 생활 ❶" / "그리스도 안의 생활 ❷").
+  const verseOrdinal = VERSE_ORDINAL_MARKS[lesson.verses.indexOf(verse)] || "";
+  document.getElementById("card-title").textContent = verseOrdinal ? `${lesson.title} ${verseOrdinal}` : lesson.title;
   document.getElementById("card-ref").textContent = verse.ref;
   document.getElementById("card-text").innerHTML = renderVerseTextWithEmphasis(verse.text);
   applyVerseFontSize();
@@ -612,47 +620,118 @@ function selectScope(scope) {
   });
   const customList = document.getElementById("custom-picker-list");
   const isCustom = scope === "custom";
-  document.querySelector(".modal-actions").style.display = isCustom ? "flex" : "none";
   if (isCustom) {
     customList.classList.add("visible");
     renderCustomPicker();
   } else {
     customList.classList.remove("visible");
   }
+  updateApplyRangeButton();
+}
+
+// "이 범위로 시작" 버튼은 말씀구절 선택(custom) 범위에서만 쓰인다 — 다른
+// 범위 버튼은 클릭하는 순간 바로 시작되므로(range-option 클릭 핸들러 참고)
+// 이 버튼을 계속 숨겨 둔다. custom일 때도 아직 하나도 고르지 않았으면
+// 숨겨서, "선택했을 때만" 나타나게 한다.
+function updateApplyRangeButton() {
+  const actions = document.querySelector(".modal-actions");
+  const btn = document.getElementById("btn-apply-range");
+  const isCustom = state.pendingScope === "custom";
+  const count = state.pendingCustomIds.size;
+  if (isCustom && count > 0) {
+    actions.style.display = "flex";
+    btn.textContent = `이 범위로 시작 (${count}/${getAllVerseIds().length})`;
+  } else {
+    actions.style.display = "none";
+  }
+}
+
+function updateBookCountBadge(toggleEl, bodyEl) {
+  const count = bodyEl.querySelectorAll("input[type='checkbox']:checked").length;
+  let badge = toggleEl.querySelector(".custom-picker-book-count");
+  if (count > 0) {
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "custom-picker-book-count";
+      toggleEl.insertBefore(badge, toggleEl.querySelector(".custom-picker-book-chevron"));
+    }
+    badge.textContent = `${count}개 선택`;
+  } else if (badge) {
+    badge.remove();
+  }
 }
 
 function renderCustomPicker() {
   const container = document.getElementById("custom-picker-list");
   container.innerHTML = "";
+
   BOOKS.forEach(book => {
-    book.lessons.forEach(lesson => {
-      lesson.verses.forEach(verse => {
-        const label = document.createElement("label");
-        label.className = "custom-picker-item";
-        const isChecked = state.pendingCustomIds.has(verse.id);
-        label.classList.toggle("checked", isChecked);
-        label.title = `${book.title} ${lesson.id}과 ${verse.id.split("-")[2]} · ${verse.ref}`;
+    const verses = book.lessons.flatMap(lesson => lesson.verses);
+    const isOpen = state.pendingCustomOpenBooks.has(book.id);
+    const checkedCount = verses.filter(v => state.pendingCustomIds.has(v.id)).length;
 
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = isChecked;
-        checkbox.addEventListener("change", () => {
-          if (checkbox.checked) {
-            state.pendingCustomIds.add(verse.id);
-          } else {
-            state.pendingCustomIds.delete(verse.id);
-          }
-          label.classList.toggle("checked", checkbox.checked);
-        });
+    const section = document.createElement("div");
+    section.className = "custom-picker-book";
 
-        const span = document.createElement("span");
-        span.textContent = `${book.id}-${lesson.id}${verse.id.split("-")[2]}`;
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "custom-picker-book-toggle";
+    toggle.classList.toggle("open", isOpen);
+    toggle.setAttribute("aria-expanded", String(isOpen));
+    toggle.innerHTML = `
+      <span class="custom-picker-book-title">${book.title}</span>
+      ${checkedCount > 0 ? `<span class="custom-picker-book-count">${checkedCount}개 선택</span>` : ""}
+      <span class="custom-picker-book-chevron" aria-hidden="true">▾</span>
+    `;
 
-        label.appendChild(checkbox);
-        label.appendChild(span);
-        container.appendChild(label);
+    const body = document.createElement("div");
+    body.className = "custom-picker-book-body";
+    body.classList.toggle("open", isOpen);
+
+    verses.forEach(verse => {
+      const label = document.createElement("label");
+      label.className = "custom-picker-item";
+      const isChecked = state.pendingCustomIds.has(verse.id);
+      label.classList.toggle("checked", isChecked);
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = isChecked;
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          state.pendingCustomIds.add(verse.id);
+        } else {
+          state.pendingCustomIds.delete(verse.id);
+        }
+        label.classList.toggle("checked", checkbox.checked);
+        // 아코디언이 접히는 걸 막기 위해 전체를 다시 그리지 않고, 배지만 갱신한다.
+        updateBookCountBadge(toggle, body);
+        updateApplyRangeButton();
       });
+
+      const span = document.createElement("span");
+      span.textContent = verse.ref;
+
+      label.appendChild(checkbox);
+      label.appendChild(span);
+      body.appendChild(label);
     });
+
+    toggle.addEventListener("click", () => {
+      const nowOpen = !body.classList.contains("open");
+      body.classList.toggle("open", nowOpen);
+      toggle.classList.toggle("open", nowOpen);
+      toggle.setAttribute("aria-expanded", String(nowOpen));
+      if (nowOpen) {
+        state.pendingCustomOpenBooks.add(book.id);
+      } else {
+        state.pendingCustomOpenBooks.delete(book.id);
+      }
+    });
+
+    section.appendChild(toggle);
+    section.appendChild(body);
+    container.appendChild(section);
   });
 }
 
@@ -761,12 +840,24 @@ function initAutoAdvanceHelp() {
   });
 }
 
-/* ---------- 초기화 ---------- */
-function init() {
-  document.getElementById("btn-continue-start").addEventListener("click", continueLearning);
-  document.getElementById("btn-start").addEventListener("click", () => {
+function enterFromStart() {
+  if (getLastVerseId()) {
+    continueLearning();
+  } else {
     showScreen("toc");
     renderToc();
+  }
+}
+
+/* ---------- 초기화 ---------- */
+function init() {
+  const startScreen = document.getElementById("screen-start");
+  startScreen.addEventListener("click", enterFromStart);
+  startScreen.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      enterFromStart();
+    }
   });
   const tocSearchInput = document.getElementById("toc-search-input");
   const tocSearchClear = document.getElementById("toc-search-clear");
@@ -798,8 +889,8 @@ function init() {
   });
   document.getElementById("btn-toc-random").addEventListener("click", openRangeModal);
   document.getElementById("btn-toc-home").addEventListener("click", () => {
-    renderStart();
     showScreen("start");
+    restartStartHero();
   });
 
   document.getElementById("btn-back-toc").addEventListener("click", () => {
@@ -811,6 +902,9 @@ function init() {
     state.pausedRandomSession = null;
     showScreen("toc");
     renderToc();
+    // 목록 레이아웃이 자리잡은 다음 프레임에 복원해야 스크롤 높이가
+    // 아직 확정되지 않은 상태에서 어긋나는 일이 없다.
+    requestAnimationFrame(() => window.scrollTo(0, state.tocScrollY));
   });
   document.getElementById("btn-mode-sequential").addEventListener("click", switchToSequential);
   document.getElementById("btn-mode-random").addEventListener("click", checkCurrentVerse);
@@ -907,9 +1001,6 @@ function init() {
           }
         }
       }
-    } else if (action === "prog-to-initials") {
-      state.practiceMode = "initials";
-      state.initialsStage = "letters";
     } else if (action === "prog-restart") {
       state.progressiveStage = 0;
       state.progressiveDone = false;
@@ -984,7 +1075,6 @@ function init() {
     if (e.target.id === "modal-range") closeRangeModal();
   });
 
-  renderStart();
   initStartHero();
 }
 

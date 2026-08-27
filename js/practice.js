@@ -59,13 +59,8 @@ export function getMemorizationChunks(verse) {
 // 어절 수가 홀수면 마지막 조각은 1어절만 남는다. autoChunk와 달리 의미 단위가
 // 아니라 길이만 보는 기계적 분할 — "나눠보기" 진행 단위처럼 항상 균일한
 // 크기의 조각이 필요할 때 쓴다.
-export function splitIntoWordPairs(text) {
-  const words = splitWords(text);
-  const chunks = [];
-  for (let i = 0; i < words.length; i += 2) {
-    chunks.push(words.slice(i, i + 2).join(" "));
-  }
-  return chunks;
+export function splitIntoWords(text) {
+  return splitWords(text);
 }
 
 // 의미가 약한 접속어/부사 — 자동 우선순위 계산 시 감점 대상(핵심 명사·동사보다 나중에 가림)

@@ -18,7 +18,7 @@
 <body>
 
 <!-- 1. 시작 화면 -->
-<section id="screen-start" class="screen active start-screen">
+<section id="screen-start" class="screen active start-screen" tabindex="0" role="button" aria-label="화면을 눌러 시작하세요">
   <div class="start-quotes" id="start-quotes" aria-hidden="true">
     <span class="quote">매일 조금씩</span>
     <span class="quote">마음에 새기는 말씀</span>
@@ -111,10 +111,10 @@
         <span class="sub-dash"></span>
       </div>
 
-      <button id="btn-start" class="start-cta">말씀 암송 시작</button>
-      <button id="btn-continue-start" class="start-link-btn" style="display:none;">이어서 학습하기</button>
     </div>
   </div>
+
+  <p class="start-tap-hint">화면을 눌러 시작하세요</p>
 </section>
 
 <!-- 2. 목차 화면 -->

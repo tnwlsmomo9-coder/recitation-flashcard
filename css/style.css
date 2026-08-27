@@ -96,12 +96,28 @@ button {
 
 .btn-block { width: 100%; }
 .btn-sm { padding: 8px 14px; font-size: 13px; border-radius: 10px; }
+.btn-chip { width: auto; padding: 10px 22px; border-radius: 999px; font-size: 14px; }
 
 /* ---------- Start screen (scramble/fly-in hero) ---------- */
 .start-screen {
   position: relative;
   overflow: hidden;
   background: var(--ivory-bg);
+  cursor: pointer;
+}
+
+.start-tap-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 1;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  opacity: 0.6;
+  letter-spacing: 0.02em;
 }
 
 .start-quotes {
@@ -201,7 +217,7 @@ button {
   line-height: 1.08;
   letter-spacing: -0.01em;
   font-weight: 400;
-  color: var(--ink);
+  color: #7A3E52;
   margin: 6px 0 0;
 }
 
@@ -235,48 +251,6 @@ button {
   font-size: 15px;
   color: var(--muted);
   margin: 0;
-}
-
-.start-link-btn {
-  background: transparent;
-  border: 1.5px solid var(--plum);
-  border-radius: 999px;
-  color: var(--plum);
-  font-size: 15px;
-  font-weight: 700;
-  font-family: var(--font);
-  padding: 13px 30px;
-  transition: background-color 0.2s ease, transform 0.15s ease;
-}
-.start-link-btn:hover {
-  background: var(--plum-light);
-}
-.start-link-btn:active {
-  transform: scale(0.97);
-}
-
-.start-cta {
-  border: none;
-  border-radius: 999px;
-  background: var(--plum);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  font-family: var(--font);
-  padding: 16px 32px;
-  margin-top: 28px;
-  box-shadow: 0 10px 24px rgba(102, 86, 108, 0.25);
-  transition: background-color 0.2s ease, transform 0.15s ease;
-}
-.start-cta:hover {
-  background: var(--plum-dark);
-}
-.start-cta:active {
-  transform: scale(0.97);
-}
-
-.decode-char {
-  display: inline-block;
 }
 
 /* ---------- TOC screen ---------- */
@@ -474,29 +448,60 @@ button {
 
 .lesson-item {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 6px;
-  border: none;
+  flex-direction: column;
   border-bottom: 1px solid var(--line);
-  background: none;
   border-radius: 12px;
-  text-align: left;
-  width: 100%;
-  color: var(--ink);
-  transition: background-color 0.2s ease;
+  overflow: hidden;
 }
-.lesson-item:hover,
-.lesson-item:active {
+
+@media (prefers-reduced-motion: no-preference) {
+  .lesson-item {
+    animation: lessonCardIn 0.32s ease-out both;
+  }
+}
+@keyframes lessonCardIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lesson-title-zone {
+  display: flex;
+  align-items: baseline;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  background: var(--plum-light);
+  text-align: left;
+  color: var(--ink);
+  transition: background-color 0.15s ease;
+}
+.lesson-title-zone:hover,
+.lesson-title-zone:active {
+  background: #E4DCE8;
+}
+
+.lesson-verse-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 14px;
+  border: none;
+  border-top: 1px solid var(--line);
+  background: none;
+  text-align: left;
+  color: var(--ink);
+  transition: background-color 0.15s ease;
+}
+.lesson-verse-zone:hover,
+.lesson-verse-zone:active {
   background: var(--plum-light);
 }
 
-.lesson-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.lesson-verse-ordinal {
+  color: var(--plum);
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .lesson-heading {
@@ -516,25 +521,12 @@ button {
   color: var(--ink);
 }
 
-.lesson-verses {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: 20px;
-  row-gap: 3px;
-}
-
-.lesson-verse-row {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  white-space: nowrap;
-}
-
 .lesson-verse-ref {
   color: var(--muted);
 }
 
 .status-dot {
+  margin-left: auto;
   font-size: 13px;
   font-weight: 600;
   line-height: 1;
@@ -930,6 +922,7 @@ button {
   margin: 12px auto 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
 }
 
@@ -1184,37 +1177,84 @@ body.modal-open {
 
 .custom-picker-list {
   display: none;
-  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
   border-top: 1px solid var(--line);
   padding-top: 12px;
   margin-top: 8px;
 }
 .custom-picker-list.visible {
-  display: grid;
+  display: flex;
+}
+
+.custom-picker-book {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--ivory-card);
+}
+
+.custom-picker-book-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 12px;
+  background: none;
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: left;
+}
+.custom-picker-book-title {
+  flex: 0 0 auto;
+}
+.custom-picker-book-count {
+  margin-left: auto;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--plum-dark);
+}
+.custom-picker-book-chevron {
+  flex: 0 0 auto;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+.custom-picker-book-toggle.open .custom-picker-book-chevron {
+  transform: rotate(180deg);
+}
+
+.custom-picker-book-body {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 10px 10px;
+}
+.custom-picker-book-body.open {
+  display: flex;
 }
 
 .custom-picker-item {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 10px 4px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--muted);
-  white-space: nowrap;
-  text-align: center;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  gap: 10px;
+  padding: 9px 6px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: normal;
+  text-align: left;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 .custom-picker-item input[type="checkbox"] {
-  display: none;
+  flex: 0 0 auto;
+  accent-color: var(--plum);
 }
 .custom-picker-item.checked {
-  background: var(--plum);
-  border-color: var(--plum);
-  color: #fff;
+  background: var(--plum-light);
+  color: var(--plum-dark);
 }
 
 .modal-actions {
@@ -1270,207 +1310,6 @@ body.modal-open {
     max-width: 420px;
     max-height: 80vh;
     border-radius: 20px;
-  }
-}
-
-/* =========================================================
-   데스크톱 (1024px 이상) — 사이드바/2단 구성으로 재구성.
-   ========================================================= */
-@media (min-width: 1024px) {
-  /* ---- 시작 화면: 세로 스택 → 가로 2단(엠블럼 | 텍스트 스택) ---- */
-  #screen-start.active {
-    max-width: 1000px;
-  }
-  .start-hero {
-    display: grid;
-    grid-template-columns: minmax(180px, 300px) max-content;
-    align-items: center;
-    column-gap: 56px;
-    width: fit-content;
-    max-width: 920px;
-    padding: 0 24px;
-    text-align: left;
-  }
-  .start-emblem {
-    grid-column: 1;
-    justify-content: flex-end;
-    margin-bottom: 0;
-  }
-  .start-emblem svg {
-    height: clamp(160px, 15vw, 220px);
-  }
-  .start-hero-content {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    grid-column: 2;
-  }
-  .start-title {
-    font-size: clamp(52px, 6vw, 84px);
-  }
-  .start-title-flourish,
-  .start-subtitle-row {
-    justify-content: flex-start;
-  }
-  .start-cta,
-  .start-link-btn {
-    align-self: flex-start;
-  }
-  .start-cta {
-    text-align: center;
-    margin-top: 24px;
-  }
-
-  /* ---- 목차 화면: 세로 사이드바 + 2열 카드 그리드 ---- */
-  #screen-toc.active {
-    display: grid;
-    grid-template-columns: 220px 1fr;
-    grid-template-rows: auto auto auto auto;
-    column-gap: 32px;
-    row-gap: 14px;
-    max-width: 1120px;
-    padding: 48px 40px;
-    /* 내부 좌우 배치·간격·크기는 그대로 두고, 헤더+사이드바+목록 전체를
-       하나의 덩어리로 보고 뷰포트 안에서 세로로만 중앙 정렬한다.
-       콘텐츠가 min-height(100vh)보다 커지면 grid는 자연히 그 높이만큼
-       늘어나므로(= 남는 공간이 없으므로) 강제 중앙정렬 없이 정상적으로
-       스크롤된다. */
-    align-content: center;
-  }
-  .toc-top-group,
-  .toc-search-filter-group {
-    display: contents;
-  }
-  .toc-header {
-    grid-column: 1 / -1;
-    grid-row: 1;
-  }
-  .toc-home-link {
-    padding: 8px 16px;
-  }
-  .toc-home-link .start-kicker {
-    font-size: 15px;
-    letter-spacing: 0.02em;
-  }
-  .toc-home-icon {
-    width: 17px;
-    height: 17px;
-  }
-  .book-tabs {
-    grid-column: 1;
-    grid-row: 2;
-    flex-direction: column;
-    height: fit-content;
-    gap: 2px;
-    background: none;
-    border: none;
-    border-radius: 0;
-    padding: 0;
-  }
-  .book-tab {
-    width: 100%;
-    text-align: left;
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-  }
-  .book-tab.active {
-    background: var(--plum-light);
-    color: var(--plum-dark);
-    font-weight: 700;
-  }
-  .toc-search {
-    grid-column: 1;
-    grid-row: 3;
-  }
-  .status-filter {
-    grid-column: 1;
-    grid-row: 4;
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .status-filter.visible {
-    max-height: 220px;
-  }
-  .filter-btn {
-    justify-content: flex-start;
-    padding: 8px 12px;
-    background: none;
-    border-radius: 8px;
-  }
-  .lesson-list {
-    grid-column: 2;
-    grid-row: 2 / span 3;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    align-content: start;
-    gap: 10px;
-  }
-  .lesson-item {
-    padding: 12px 14px;
-  }
-
-  /* ---- 암송 학습 화면: 카드 좌우에 큰 이전/다음 화살표 ---- */
-  #screen-card.active {
-    display: grid;
-    grid-template-columns: 72px minmax(0, 720px) 72px;
-    grid-template-rows: auto auto auto auto;
-    column-gap: 24px;
-    row-gap: 12px;
-    justify-content: center;
-    max-width: 1000px;
-    padding: 48px 40px;
-  }
-  .card-topbar {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .verse-card {
-    grid-column: 2;
-    grid-row: 2;
-  }
-  .auto-advance-row {
-    grid-column: 2;
-    grid-row: 3;
-  }
-  .verse-pager {
-    display: contents;
-  }
-  #btn-prev,
-  #btn-next {
-    grid-row: 2;
-    align-self: center;
-    justify-self: center;
-    padding: 12px 10px;
-    transition: color 0.15s ease, transform 0.15s ease;
-  }
-  #btn-prev .pager-label,
-  #btn-next .pager-label {
-    display: none;
-  }
-  #btn-prev .pager-arrow,
-  #btn-next .pager-arrow {
-    font-size: 26px;
-  }
-  #btn-prev:hover:not(:disabled) {
-    color: var(--plum-dark);
-    transform: translateX(-2px);
-  }
-  #btn-next:hover:not(:disabled) {
-    color: var(--plum-dark);
-    transform: translateX(2px);
-  }
-  #btn-prev {
-    grid-column: 1;
-  }
-  #btn-next {
-    grid-column: 3;
-  }
-  .pager-count {
-    grid-column: 2;
-    grid-row: 4;
-    justify-self: center;
   }
 }
 

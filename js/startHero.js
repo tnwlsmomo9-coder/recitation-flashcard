@@ -1,73 +1,29 @@
 import { getAllVerseIds, findVerseById } from "./data.js";
 
 let heroStarted = false;
+// 랜딩 인트로가 (재)시작될 때마다 하나씩 늘어나는 세대 번호 —
+// playHeroIntro/restartStartHero 참고.
+let heroGeneration = 0;
 
-const DECODE_POOL = "ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎㅏㅑㅓㅕㅗㅛㅜㅠㅡㅣ0123456789#*%/+-".split("");
-
-function decodeChar(span, finalChar, { tempColor, finalColor, startDelay = 0 } = {}) {
-  const steps = 5 + Math.floor(Math.random() * 3);
-  const tl = gsap.timeline({ delay: startDelay });
-
-  for (let i = 0; i < steps; i++) {
-    tl.to(span, {
-      duration: 0.04 + Math.random() * 0.03,
-      x: (Math.random() - 0.5) * 6,
-      y: (Math.random() - 0.5) * 6,
-      scale: 0.75,
-      opacity: 0.6 + Math.random() * 0.25,
-      color: tempColor,
-      ease: "none",
-      onStart: () => {
-        span.textContent = DECODE_POOL[Math.floor(Math.random() * DECODE_POOL.length)];
-      },
-    });
-  }
-
-  tl.to(span, {
-    duration: 0.18,
-    x: 0,
-    y: 0,
-    scale: 1.1,
-    opacity: 1,
-    color: finalColor,
-    ease: "power2.out",
-    onStart: () => {
-      span.textContent = finalChar;
-    },
-  }).to(span, {
-    duration: 0.1,
-    scale: 1,
-    ease: "power2.out",
-  });
-
-  return tl;
-}
-
-// 제목이 "김 서린 유리가 걷히듯" 흐리고 반투명한 상태로 시작해 배경 말씀
-// 오버레이가 재생되는 동안 서서히 선명해지다가(전체 예상 재생시간의 약
-// 80% 지점, 단 최대 5초 안에 완전히 선명해짐), 다 걷히고 나면 은은한 빛이
-// 글자 안쪽만 왼쪽에서 오른쪽으로 한 번 지나간다. 위치/크기/폰트/색은
-// 전혀 건드리지 않고 blur·opacity(그리고 광택용 배경 위치)만 움직인다 —
+// 제목은 배경 말씀 오버레이가 시작되는 시점에 맞춰 은은한 빛이 글자
+// 안쪽만 왼쪽에서 오른쪽으로 한 번 천천히 스쳐 지나가고, 빛이 오른쪽
+// 끝에 닿는 순간 짧게 찡 하고 반짝이는 잔광을 한 번 남긴다. 이 스침과
+// 정확히 같은 속도로, 글자의 "평상시" 색도 연보라 오버레이가 덮여 있는
+// 동안의 회보라(overlayColor)에서 오버레이가 다 걷힌 뒤의 버건디
+// (clearedColor)로 서서히 스며들듯 전환된다. 위치/크기/폰트는 전혀
+// 건드리지 않고 광택용 배경 위치·색과 텍스트 그림자만 움직인다 —
 // background-clip: text로 그라디언트를 글자 모양에만 클리핑해서, 빛이
 // 글자 바깥으로 사각형처럼 새어 나가지 않게 한다. 모션 감소 설정에서는
-// 아무 애니메이션 없이 완성된 제목을 바로 보여준다.
-function playTitleFogClear(titleEl, chunkCount) {
-  // 모션 감소 설정에서는 흐림/광택 애니메이션 없이 완성된 제목을 그대로
-  // 둔다 — gsap.set을 전혀 호출하지 않으므로 원래 CSS(정상 색상, 블러
-  // 없음)가 그대로 유지된다.
+// 아무 애니메이션도 재생하지 않는다(이때는 .start-title의 CSS 기본색인
+// clearedColor가 그대로 보인다).
+function playTitleShine(titleEl) {
   const prefersReducedMotion = window.matchMedia
     && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (prefersReducedMotion) return;
 
-  const totalOverlay = estimateOverlayDuration(chunkCount);
-  // 오버레이 시간이 아주 긴 말씀이어도 흐림이 걷히는 데 5초를 넘게
-  // 기다리게 하지 않는다.
-  const clearDuration = Math.min(totalOverlay * 0.8, 5);
-  const shineDuration = 1.0;
-
-  // 원래 글자색을 실측해 광택 그라디언트의 "평상시" 색으로 그대로 쓴다 —
-  // 그래야 빛이 지나가지 않는 구간에서는 기존 색과 완전히 같아 보인다.
-  const inkColor = getComputedStyle(titleEl).color;
+  const shineDuration = 6.0;
+  const overlayColor = "#6D5A72"; // 연보라 오버레이가 덮여 있는 동안의 회보라
+  const clearedColor = "#7A3E52"; // 오버레이가 다 걷힌 뒤의 버건디
 
   // 배경 위치는 반드시 픽셀 값으로, 하나의 "Xpx Ypx" 문자열로 지정한다 —
   // 퍼센트 값(예: "200% 0")은 background-size가 100%를 넘는 경우
@@ -82,9 +38,7 @@ function playTitleFogClear(titleEl, chunkCount) {
   const endPos = `${(-0.2 * w).toFixed(2)}px 0px`;
 
   gsap.set(titleEl, {
-    filter: "blur(9px)",
-    opacity: 0.55,
-    backgroundImage: `linear-gradient(100deg, ${inkColor} 35%, #FFFDF8 50%, ${inkColor} 65%)`,
+    backgroundImage: `linear-gradient(100deg, ${overlayColor} 35%, #FFFDF8 50%, ${overlayColor} 65%)`,
     backgroundSize: `${(w * 3).toFixed(2)}px 100%`,
     backgroundRepeat: "no-repeat",
     backgroundPosition: startPos,
@@ -95,20 +49,40 @@ function playTitleFogClear(titleEl, chunkCount) {
   });
 
   const tl = gsap.timeline();
-  // 흐림(9px→0)과 반투명(0.55→1)이 함께, 천천히 걷히며 선명해진다.
-  tl.to(titleEl, {
-    filter: "blur(0px)",
-    opacity: 1,
-    duration: clearDuration,
-    ease: "sine.out",
-  }, 0);
-  // 다 걷힌 직후, 은은한 빛이 글자 안쪽만 왼쪽에서 오른쪽으로 한 번
-  // 스쳐 지나간다.
   tl.to(titleEl, {
     backgroundPosition: endPos,
     duration: shineDuration,
     ease: "power2.inOut",
-  }, clearDuration);
+  }, 0);
+
+  // 오버레이가 걷히는 진행률에 맞춰(=빛이 왼쪽에서 오른쪽으로 지나가는
+  // 진행률과 정확히 같은 duration/ease로 동시에) 글자의 평상시 색을
+  // 회보라 → 버건디로 서서히 전환한다. backgroundPosition이 아니라
+  // 순수 JS 값을 트윈해, 매 프레임 그라디언트의 바깥쪽(35%/65%) 색만
+  // 다시 계산해 넣는다 — 가운데 50% 하이라이트(#FFFDF8)는 그대로 둔다.
+  const colorMix = gsap.utils.interpolate(overlayColor, clearedColor);
+  const colorProgress = { t: 0 };
+  tl.to(colorProgress, {
+    t: 1,
+    duration: shineDuration,
+    ease: "power2.inOut",
+    onUpdate: () => {
+      const c = colorMix(colorProgress.t);
+      titleEl.style.backgroundImage = `linear-gradient(100deg, ${c} 35%, #FFFDF8 50%, ${c} 65%)`;
+    },
+  }, 0);
+
+  // 빛이 오른쪽 끝까지 지나간 순간, 찡 하고 짧게 반짝이는 잔광을 남기고
+  // 사라진다(밝아졌다 다시 원래대로, yoyo 왕복 한 번).
+  tl.fromTo(titleEl,
+    { textShadow: "0 0 0px rgba(255,253,248,0)" },
+    {
+      textShadow: "0 0 16px rgba(255,253,248,0.85)",
+      duration: 0.16,
+      ease: "power1.out",
+      yoyo: true,
+      repeat: 1,
+    }, shineDuration);
 }
 
 // 배경 문구가 뜰 구역(zone). 한 단계에 최대 3개까지 동시에 뜰 수 있으므로,
@@ -268,16 +242,14 @@ function getSafeMargins() {
 
 // 말씀 묶음이 절대 침범하면 안 되는 기존 히어로 요소들. .start-hero 전체를
 // 뭉뚱그린 사각형 하나 대신 요소 단위로 실측해서, 요소 사이 빈틈에도 자리를
-// 찾을 여지를 준다. #btn-continue-start는 "이어서 학습하기"가 아직 없을 때
-// display:none이라 자동으로 제외된다.
+// 찾을 여지를 준다.
 const HERO_EXCLUSION_SELECTORS = [
   ".start-emblem",
   ".start-kicker-badge",
   ".start-title",
   ".start-title-flourish",
   ".start-subtitle-row",
-  "#btn-start",
-  "#btn-continue-start",
+  ".start-tap-hint",
 ];
 
 function buildExclusionZones(containerRect) {
@@ -300,25 +272,13 @@ function buildExclusionZones(containerRect) {
   return zones;
 }
 
-// 배경 말씀 묶음 하나의 재생 시간을 구성하는 조각들. revealQuoteBubble/
-// startQuoteLoop과 제목 fog-clear 효과의 시간 추정(estimateOverlayDuration)이
-// 서로 어긋나지 않도록 이 값들을 공유한다.
+// 배경 말씀 묶음 하나의 재생 시간을 구성하는 조각들.
 const CHUNK_SWELL_DURATION = 0.55;
 const CHUNK_HOLD_MIN = 1.0;
 const CHUNK_HOLD_RANGE = 0.3;
 const CHUNK_BURST_DURATION = 0.5;
 const MAX_CONCURRENT_QUOTES = 3;
 const STAGE_GAP = 0.3;
-
-// 배경 말씀 오버레이의 예상 총 재생 시간(초). 실제로는 화면 여백에 따라
-// 한 단계에 1~3개가 동시에 들어가므로 정확한 값과 조금 다를 수 있지만,
-// 제목 fog-clear 효과 시간을 "대략" 맞추는 용도로는 매 단계가 항상 최대
-// 동시 개수로 찬다고 가정한 이 추정치로 충분하다.
-function estimateOverlayDuration(chunkCount) {
-  const avgChunkLifespan = CHUNK_SWELL_DURATION + (CHUNK_HOLD_MIN + CHUNK_HOLD_RANGE / 2) + CHUNK_BURST_DURATION;
-  const estimatedStages = Math.max(Math.ceil(chunkCount / MAX_CONCURRENT_QUOTES), 1);
-  return estimatedStages * (avgChunkLifespan + STAGE_GAP);
-}
 
 // 64구절 중 오버레이 한 번에 보여줄 말씀 하나를 무작위로 고른다.
 function pickRandomVerseId() {
@@ -473,7 +433,11 @@ function revealQuoteBubble(quote, text, obstacles, zone, marginX, required, cont
 // 최댓값만큼 기다린 뒤) 다음 단계를 시작한다. 마지막 단계까지 끝나면 더 이상
 // 새 말씀으로 넘어가지 않고 onAllDone을 호출한 뒤 멈춘다 — 오버레이가 떠
 // 있는 총 시간은 곧 묶음 개수(=말씀 길이)에 비례해 자동으로 정해진다.
-function startQuoteLoop(quotes, onAllDone) {
+// isActive는 이 실행이 여전히 최신 세대인지 반환하는 함수 — 랜딩 인트로가
+// 재시작(restartStartHero)돼 낡아진 실행은, 이미 예약해 둔
+// gsap.delayedCall이 뒤늦게 불려도 다음 단계를 진행하지 않고 조용히
+// 멈춘다.
+function startQuoteLoop(quotes, onAllDone, isActive) {
   const verseId = pickRandomVerseId();
   const chunks = chunkVerseIntoGroups(findVerseById(verseId).verse.text);
   const safe = getSafeMargins();
@@ -487,6 +451,7 @@ function startQuoteLoop(quotes, onAllDone) {
   let lastZone = null;
 
   function playNextStage() {
+    if (isActive && !isActive()) return;
     if (chunkIndex >= chunks.length) {
       if (onAllDone) onAllDone();
       return;
@@ -525,74 +490,14 @@ function startQuoteLoop(quotes, onAllDone) {
   return chunks.length;
 }
 
-function setupCtaCentering() {
-  const desktopQuery = window.matchMedia("(min-width: 1024px)");
-  const title = document.querySelector(".start-title");
-  const cta = document.getElementById("btn-start");
-  const link = document.getElementById("btn-continue-start");
-  const content = document.querySelector(".start-hero-content");
-  if (!title || !cta) return null;
-
-  function apply() {
-    if (!desktopQuery.matches) {
-      cta.style.marginLeft = "";
-      if (link) link.style.marginLeft = "";
-      if (content) content.style.width = "";
-      return;
-    }
-    // Let the group size naturally before measuring, in case a previous
-    // frozen width from an earlier call is still applied.
-    if (content) content.style.width = "";
-    const titleWidth = title.getBoundingClientRect().width;
-    [cta, link].forEach(btn => {
-      if (!btn) return;
-      const btnWidth = btn.getBoundingClientRect().width;
-      btn.style.marginLeft = `${Math.max((titleWidth - btnWidth) / 2, 0)}px`;
-    });
-    if (content) {
-      // .start-hero's second grid column is sized to this element's
-      // content width, and the whole hero box is centered on screen —
-      // so once the CTA's decode animation starts rewriting its
-      // characters (and briefly changing its own rendered width), that
-      // would otherwise reflow the column and visibly shift the entire
-      // centered group sideways. Freezing this element's width right
-      // after positioning the CTA (and before decodeChar runs) locks
-      // the group's size for the rest of the animation.
-      content.style.width = `${content.getBoundingClientRect().width}px`;
-    }
-  }
-
-  // Deliberately NOT watching the CTA's own text mutations here, and not
-  // recomputing on document.fonts.ready either: its characters (and the
-  // title's) get rewritten to random decode-pool glyphs of varying
-  // widths for the ~1s scramble animation, and recomputing off of those
-  // transient widths — whether from every mutation or from a fonts.ready
-  // callback landing mid-animation — made the whole group visibly slide
-  // sideways, or settle into a slightly wrong final position. Instead,
-  // initStartHero() waits for fonts to be ready and calls `apply()` once,
-  // synchronously, right after the CTA/title reach their final
-  // (pre-animation) character markup — the one moment their widths are
-  // both already correct and stable — so the group is positioned once
-  // and never moves again on its own.
-  window.addEventListener("resize", apply);
-  if (link) {
-    // app.js toggles btn-continue-start's display via inline style when
-    // "이어서 학습하기" becomes available — recompute its centering then,
-    // since its width is 0 (and thus unmeasurable) while hidden.
-    new MutationObserver(apply).observe(link, {
-      attributes: true,
-      attributeFilter: ["style"],
-    });
-  }
-  apply();
-  return apply;
-}
-
-export function initStartHero() {
-  if (heroStarted) return;
-  heroStarted = true;
-
-  const applyCtaCentering = setupCtaCentering();
+// 랜딩 인트로(엠블럼 페이드인·배경 말씀 플로팅·제목 빛 스침)를 실제로
+// 재생하는 본체. 최초 로드(initStartHero)와 홈 화면 재진입
+// (restartStartHero)이 이 함수 하나를 그대로 공유한다. 호출마다 세대
+// 번호를 하나씩 발급해, 재시작으로 낡아진 이전 호출의 비동기 콜백
+// (document.fonts.ready 대기, startQuoteLoop의 재귀 예약)이 뒤늦게
+// 실행되더라도 아무 것도 하지 않고 조용히 멈추게 한다.
+function playHeroIntro() {
+  const myGeneration = ++heroGeneration;
 
   if (typeof gsap === "undefined") return;
 
@@ -622,60 +527,31 @@ export function initStartHero() {
   // 넘어가므로, 여러 구절이 뒤섞여 보이거나 등장 순서와 무관하게 한꺼번에
   // 사라지는 일은 없다.
 
-  // Split the CTA into its final per-character markup first (still showing
-  // its finished text at this point), re-measure the CTA's centering
-  // against that final layout, and only then start its decode/scramble
-  // tween — so the button is already sitting in its resting position
-  // before anything starts visibly moving. This whole step waits for
-  // webfonts to finish loading first: measuring against a fallback font's
-  // metrics (then correcting later, once fonts.ready fires) is exactly
-  // what used to let a mid-animation recompute lock in a slightly-off
-  // final position. The title no longer needs this treatment since its
-  // fog-clear effect (playTitleFogClear) never changes its text or size.
+  // 제목 폰트("Black Han Sans")가 로드되기 전에 시작하면 playTitleShine이
+  // fallback 폰트 기준으로 제목 폭을 재서 빛 스침 그라디언트 크기가 틀어질
+  // 수 있다 — 웹폰트 로딩을 기다린 뒤 시작한다.
   function startTextDecode() {
+    // 이 콜백이 실행되기 전에 재시작이 한 번 더 일어났다면(=더 최신
+    // 세대가 있다면) 이 실행은 낡은 것이므로 아무 것도 하지 않는다.
+    if (myGeneration !== heroGeneration) return;
+
     const titleEl = document.querySelector(".start-title");
 
-    const ctaBtn = document.getElementById("btn-start");
-    let ctaLabel = "";
-    if (ctaBtn) {
-      ctaLabel = ctaBtn.textContent;
-      ctaBtn.innerHTML = ctaLabel
-        .split("")
-        .map(ch => (ch === " " ? " " : `<span class="decode-char cta-char">${ch}</span>`))
-        .join("");
-    }
-
-    if (applyCtaCentering) applyCtaCentering();
-
-    // 배경 문구는 .start-hero의 "최종" 사각형을 기준으로 겹침을 피해야 한다
-    // — applyCtaCentering()이 방금 폰트 로딩 완료 후 히어로 크기를 다시
-    // 확정했으므로, 문구 루프는 반드시 이 시점 이후에 시작해야 나중에
-    // 히어로가 커지면서 문구와 겹치는 일이 없다.
-    //
     // 말씀 쇼 전용 배경 스크림: 쇼가 시작되면 은은하게 켜져서 색상·불투명도를
     // 그대로 유지하다가, 마지막 묶음까지 완전히 사라진 뒤(onAllDone)에만
-    // 페이드아웃한다. 제목/버튼 스크램블에 쓰이는 start-decode-glow와는
-    // 별개의 요소라, 그 기존 타이밍에는 영향을 주지 않는다.
+    // 페이드아웃한다. 제목 스크램블에 쓰이는 start-decode-glow와는 별개의
+    // 요소라, 그 기존 타이밍에는 영향을 주지 않는다.
     const scrim = document.getElementById("quote-overlay-scrim");
     if (scrim) gsap.to(scrim, { opacity: 1, duration: 0.2 });
-    const chunkCount = startQuoteLoop(quotes, () => {
+    startQuoteLoop(quotes, () => {
+      if (myGeneration !== heroGeneration) return;
       if (scrim) gsap.to(scrim, { opacity: 0, duration: 0.7, ease: "sine.inOut" });
-    });
+    }, () => myGeneration === heroGeneration);
 
+    // 제목의 빛 스침 효과는 배경 말씀 오버레이가 시작되는 이 시점에 맞춰
+    // 바로 시작한다.
     if (titleEl) {
-      playTitleFogClear(titleEl, chunkCount);
-    }
-
-    if (ctaBtn) {
-      const spans = ctaBtn.querySelectorAll(".cta-char");
-      const glyphs = ctaLabel.split("").filter(ch => ch !== " ");
-      spans.forEach((span, i) => {
-        decodeChar(span, glyphs[i], {
-          tempColor: "rgba(255,255,255,0.55)",
-          finalColor: "#fff",
-          startDelay: 0.35 + i * 0.07 + Math.random() * 0.05,
-        });
-      });
+      playTitleShine(titleEl);
     }
   }
 
@@ -684,4 +560,31 @@ export function initStartHero() {
   } else {
     startTextDecode();
   }
+}
+
+export function initStartHero() {
+  if (heroStarted) return;
+  heroStarted = true;
+  playHeroIntro();
+}
+
+// 홈 화면(신천중부교회 · 제자훈련반 배지)으로 다시 들어올 때, 랜딩
+// 인트로를 처음부터 다시 재생한다. 이전 실행이 아직 끝나지 않은 채
+// 남아 있을 수 있으므로(예: 배경 말씀이 아직 떠 있는 도중 홈으로
+// 나갔다가 곧바로 다시 들어온 경우), 그 트윈들을 먼저 멈춘 뒤 재생한다.
+export function restartStartHero() {
+  if (typeof gsap === "undefined") return;
+
+  gsap.killTweensOf(".quote");
+  gsap.killTweensOf(".start-title");
+  gsap.killTweensOf("#quote-overlay-scrim");
+  gsap.killTweensOf("#start-decode-glow");
+  gsap.killTweensOf(".start-emblem");
+  // 엠블럼은 gsap.from()으로 매번 재생되는데, 죽은 트윈이 중간값에
+  // 멈춰 있으면 다음 .from()이 그 중간값을 최종 목표로 착각해 잘못된
+  // 지점까지만 차오른다 — GSAP가 남긴 인라인 스타일을 지워 CSS
+  // 기본값(완전히 보이는 상태)으로 되돌린 뒤 재생한다.
+  gsap.set(".start-emblem", { clearProps: "opacity,scale" });
+
+  playHeroIntro();
 }
