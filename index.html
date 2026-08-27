@@ -235,21 +235,29 @@
 <div class="modal-overlay" id="modal-range">
   <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="modal-range-title" tabindex="-1">
     <div class="modal-header">
+      <button type="button" class="text-link-btn" id="btn-picker-back" style="display:none;">← 범위 선택</button>
       <h3 class="type-heading" id="modal-range-title">랜덤 범위 선택</h3>
       <button id="btn-close-modal" class="btn btn-outline btn-sm">닫기</button>
     </div>
 
-    <button class="range-option" data-scope="currentBook">현재 권 내</button>
-    <button class="range-option" data-scope="all">전체 64구절</button>
-    <button class="range-option" data-scope="learning">더 익히기 ○</button>
-    <button class="range-option" data-scope="partial">부분 암기 ◐</button>
-    <button class="range-option" data-scope="memorized">암기 완료 ✓</button>
-    <button class="range-option" data-scope="custom">말씀구절 선택</button>
+    <div id="range-option-list">
+      <button class="range-option" data-scope="currentBook">현재 권 내</button>
+      <button class="range-option" data-scope="all">전체 64구절</button>
+      <button class="range-option" data-scope="learning">더 익히기 ○</button>
+      <button class="range-option" data-scope="partial">부분 암기 ◐</button>
+      <button class="range-option" data-scope="memorized">암기 완료 ✓</button>
+      <button class="range-option" data-scope="custom">말씀구절 선택</button>
+    </div>
 
-    <div class="custom-picker-list" id="custom-picker-list"></div>
-
-    <div class="modal-actions">
-      <button id="btn-apply-range" class="btn btn-primary btn-block">이 범위로 시작</button>
+    <div class="custom-picker-screen" id="custom-picker-screen">
+      <div class="book-tabs" id="custom-picker-tabs"></div>
+      <div class="custom-picker-panel" id="custom-picker-panel">
+        <div class="custom-picker-toolbar" id="custom-picker-toolbar"></div>
+        <div class="custom-picker-list" id="custom-picker-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button id="btn-apply-range" class="btn btn-primary btn-block">이 범위로 시작</button>
+      </div>
     </div>
   </div>
 </div>

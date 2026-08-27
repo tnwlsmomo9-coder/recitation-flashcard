@@ -21,7 +21,8 @@ const state = {
   queueIndex: 0,
   pendingScope: "currentBook",
   pendingCustomIds: new Set(),
-  pendingCustomOpenBooks: new Set(),
+  // 말씀구절 선택 화면에서 현재 펼쳐져 있는 권(한 번에 하나만 펼쳐진다). null이면 전부 접힘.
+  pendingCustomOpenBook: null,
   tocFilter: "all",
   tocSearch: "",
   // 목차에서 특정 말씀으로 들어가기 직전의 스크롤 위치. "‹ 목차"로
@@ -163,15 +164,16 @@ function renderLessonList() {
   list.innerHTML = "";
   const statusMap = getStatusMap();
 
-  const isAll = state.activeBookTab === "all";
-  const lessonsWithBook = isAll
+  const query = state.tocSearch.trim();
+  // 검색어가 있으면 지금 어느 권 탭을 보고 있든 상관없이 전체 권에서 찾는다.
+  const showAllBooks = state.activeBookTab === "all" || query.length > 0;
+  const lessonsWithBook = showAllBooks
     ? BOOKS.flatMap(b => b.lessons.map(lesson => ({ book: b, lesson })))
     : (() => {
         const book = BOOKS.find(b => b.id === state.activeBookTab);
         return book.lessons.map(lesson => ({ book, lesson }));
       })();
 
-  const query = state.tocSearch.trim();
   const visibleLessons = lessonsWithBook.filter(({ lesson }) =>
     lessonMatchesFilter(lesson, statusMap, state.tocFilter) && lessonMatchesSearch(lesson, query)
   );
@@ -188,7 +190,7 @@ function renderLessonList() {
     const li = document.createElement("li");
     li.className = "lesson-item";
 
-    const lessonNumberLabel = isAll ? `${book.title} ${lesson.id}과` : `${lesson.id}과`;
+    const lessonNumberLabel = showAllBooks ? `${book.title} ${lesson.id}과` : `${lesson.id}과`;
     const titleZone = document.createElement("button");
     titleZone.type = "button";
     titleZone.className = "lesson-title-zone";
@@ -571,6 +573,9 @@ function openRangeModal() {
   const sheet = overlay.querySelector(".modal-sheet");
   overlay.classList.add("visible");
   document.body.classList.add("modal-open");
+  // 모달을 다시 열 때는 항상 범위 목록 화면부터 보여준다 — 지난번에
+  // 말씀구절 선택 화면에 있다가 닫았어도 재진입 시 목록부터 시작한다.
+  hideCustomPickerScreen();
   selectScope(state.pendingScope);
 
   const focusables = getFocusableElements(sheet);
@@ -618,27 +623,35 @@ function selectScope(scope) {
     btn.classList.toggle("selected", isSelected);
     btn.setAttribute("aria-pressed", String(isSelected));
   });
-  const customList = document.getElementById("custom-picker-list");
-  const isCustom = scope === "custom";
-  if (isCustom) {
-    customList.classList.add("visible");
-    renderCustomPicker();
-  } else {
-    customList.classList.remove("visible");
-  }
-  updateApplyRangeButton();
 }
 
-// "이 범위로 시작" 버튼은 말씀구절 선택(custom) 범위에서만 쓰인다 — 다른
-// 범위 버튼은 클릭하는 순간 바로 시작되므로(range-option 클릭 핸들러 참고)
-// 이 버튼을 계속 숨겨 둔다. custom일 때도 아직 하나도 고르지 않았으면
-// 숨겨서, "선택했을 때만" 나타나게 한다.
+// "말씀구절 선택"을 누르면 같은 바텀시트 안에서 범위 목록 대신 권 탭 +
+// 구절 체크리스트 화면으로 전환한다. "← 범위 선택"으로 돌아가도
+// 펼쳐둔 권과 체크 상태(state.pendingCustomOpenBook/pendingCustomIds)는
+// 그대로 남는다 — 다시 들어오면 이어서 보인다.
+function showCustomPickerScreen() {
+  document.getElementById("range-option-list").style.display = "none";
+  document.getElementById("custom-picker-screen").classList.add("visible");
+  document.getElementById("modal-range-title").style.display = "none";
+  document.getElementById("btn-picker-back").style.display = "";
+  renderCustomPicker();
+}
+
+function hideCustomPickerScreen() {
+  document.getElementById("custom-picker-screen").classList.remove("visible");
+  document.getElementById("range-option-list").style.display = "";
+  document.getElementById("modal-range-title").style.display = "";
+  document.getElementById("btn-picker-back").style.display = "none";
+}
+
+// "이 범위로 시작" 버튼은 말씀구절 선택 화면 안에 있으므로 화면 자체가
+// 숨겨지면 함께 숨겨진다 — 여기서는 그 화면이 보이는 동안, 하나 이상
+// 골랐을 때만 나타나게 개수만 확인한다.
 function updateApplyRangeButton() {
   const actions = document.querySelector(".modal-actions");
   const btn = document.getElementById("btn-apply-range");
-  const isCustom = state.pendingScope === "custom";
   const count = state.pendingCustomIds.size;
-  if (isCustom && count > 0) {
+  if (count > 0) {
     actions.style.display = "flex";
     btn.textContent = `이 범위로 시작 (${count}/${getAllVerseIds().length})`;
   } else {
@@ -646,92 +659,94 @@ function updateApplyRangeButton() {
   }
 }
 
-function updateBookCountBadge(toggleEl, bodyEl) {
-  const count = bodyEl.querySelectorAll("input[type='checkbox']:checked").length;
-  let badge = toggleEl.querySelector(".custom-picker-book-count");
-  if (count > 0) {
-    if (!badge) {
-      badge = document.createElement("span");
-      badge.className = "custom-picker-book-count";
-      toggleEl.insertBefore(badge, toggleEl.querySelector(".custom-picker-book-chevron"));
-    }
-    badge.textContent = `${count}개 선택`;
-  } else if (badge) {
-    badge.remove();
-  }
+function renderCustomPicker() {
+  renderCustomPickerTabs();
+  renderCustomPickerPanel();
+  updateApplyRangeButton();
 }
 
-function renderCustomPicker() {
-  const container = document.getElementById("custom-picker-list");
+function renderCustomPickerTabs() {
+  const container = document.getElementById("custom-picker-tabs");
   container.innerHTML = "";
-
   BOOKS.forEach(book => {
-    const verses = book.lessons.flatMap(lesson => lesson.verses);
-    const isOpen = state.pendingCustomOpenBooks.has(book.id);
-    const checkedCount = verses.filter(v => state.pendingCustomIds.has(v.id)).length;
-
-    const section = document.createElement("div");
-    section.className = "custom-picker-book";
-
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = "custom-picker-book-toggle";
-    toggle.classList.toggle("open", isOpen);
-    toggle.setAttribute("aria-expanded", String(isOpen));
-    toggle.innerHTML = `
-      <span class="custom-picker-book-title">${book.title}</span>
-      ${checkedCount > 0 ? `<span class="custom-picker-book-count">${checkedCount}개 선택</span>` : ""}
-      <span class="custom-picker-book-chevron" aria-hidden="true">▾</span>
-    `;
-
-    const body = document.createElement("div");
-    body.className = "custom-picker-book-body";
-    body.classList.toggle("open", isOpen);
-
-    verses.forEach(verse => {
-      const label = document.createElement("label");
-      label.className = "custom-picker-item";
-      const isChecked = state.pendingCustomIds.has(verse.id);
-      label.classList.toggle("checked", isChecked);
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = isChecked;
-      checkbox.addEventListener("change", () => {
-        if (checkbox.checked) {
-          state.pendingCustomIds.add(verse.id);
-        } else {
-          state.pendingCustomIds.delete(verse.id);
-        }
-        label.classList.toggle("checked", checkbox.checked);
-        // 아코디언이 접히는 걸 막기 위해 전체를 다시 그리지 않고, 배지만 갱신한다.
-        updateBookCountBadge(toggle, body);
-        updateApplyRangeButton();
-      });
-
-      const span = document.createElement("span");
-      span.textContent = verse.ref;
-
-      label.appendChild(checkbox);
-      label.appendChild(span);
-      body.appendChild(label);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    const isActive = state.pendingCustomOpenBook === book.id;
+    btn.className = "book-tab" + (isActive ? " active" : "");
+    btn.setAttribute("aria-pressed", String(isActive));
+    btn.textContent = book.title;
+    btn.addEventListener("click", () => {
+      state.pendingCustomOpenBook = isActive ? null : book.id;
+      renderCustomPicker();
     });
+    container.appendChild(btn);
+  });
+}
 
-    toggle.addEventListener("click", () => {
-      const nowOpen = !body.classList.contains("open");
-      body.classList.toggle("open", nowOpen);
-      toggle.classList.toggle("open", nowOpen);
-      toggle.setAttribute("aria-expanded", String(nowOpen));
-      if (nowOpen) {
-        state.pendingCustomOpenBooks.add(book.id);
+function renderCustomPickerPanel() {
+  const panel = document.getElementById("custom-picker-panel");
+  const toolbar = document.getElementById("custom-picker-toolbar");
+  const list = document.getElementById("custom-picker-list");
+  toolbar.innerHTML = "";
+  list.innerHTML = "";
+
+  const bookId = state.pendingCustomOpenBook;
+  panel.classList.toggle("open", bookId != null);
+  if (bookId == null) return;
+
+  const verseIds = getBookVerseIds(bookId);
+  const checkedCount = verseIds.filter(id => state.pendingCustomIds.has(id)).length;
+  const allChecked = checkedCount === verseIds.length;
+
+  const selectAllBtn = document.createElement("button");
+  selectAllBtn.type = "button";
+  selectAllBtn.className = "custom-picker-select-all";
+  selectAllBtn.textContent = allChecked ? "전체 해제" : "전체 선택";
+  selectAllBtn.addEventListener("click", () => {
+    verseIds.forEach(id => {
+      if (allChecked) {
+        state.pendingCustomIds.delete(id);
       } else {
-        state.pendingCustomOpenBooks.delete(book.id);
+        state.pendingCustomIds.add(id);
       }
     });
+    renderCustomPickerPanel();
+    updateApplyRangeButton();
+  });
+  const countLabel = document.createElement("span");
+  countLabel.className = "custom-picker-count-label";
+  countLabel.textContent = `${checkedCount}개 선택`;
+  toolbar.appendChild(selectAllBtn);
+  toolbar.appendChild(countLabel);
 
-    section.appendChild(toggle);
-    section.appendChild(body);
-    container.appendChild(section);
+  const book = BOOKS.find(b => b.id === bookId);
+  book.lessons.flatMap(lesson => lesson.verses).forEach(verse => {
+    const label = document.createElement("label");
+    label.className = "custom-picker-item";
+    const isChecked = state.pendingCustomIds.has(verse.id);
+    label.classList.toggle("checked", isChecked);
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = isChecked;
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        state.pendingCustomIds.add(verse.id);
+      } else {
+        state.pendingCustomIds.delete(verse.id);
+      }
+      label.classList.toggle("checked", checkbox.checked);
+      // 전체선택 버튼 라벨·개수 표시를 갱신한다(패널을 접지는 않음).
+      renderCustomPickerPanel();
+      updateApplyRangeButton();
+    });
+
+    const span = document.createElement("span");
+    span.textContent = verse.ref;
+
+    label.appendChild(checkbox);
+    label.appendChild(span);
+    list.appendChild(label);
   });
 }
 
@@ -1064,11 +1079,14 @@ function init() {
   document.querySelectorAll(".range-option").forEach(btn => {
     btn.addEventListener("click", () => {
       selectScope(btn.dataset.scope);
-      if (btn.dataset.scope !== "custom") {
+      if (btn.dataset.scope === "custom") {
+        showCustomPickerScreen();
+      } else {
         applyRange();
       }
     });
   });
+  document.getElementById("btn-picker-back").addEventListener("click", hideCustomPickerScreen);
   document.getElementById("btn-apply-range").addEventListener("click", applyRange);
   document.getElementById("btn-close-modal").addEventListener("click", closeRangeModal);
   document.getElementById("modal-range").addEventListener("click", e => {
