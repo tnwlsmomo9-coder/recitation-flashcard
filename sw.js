@@ -1,6 +1,6 @@
 // 오프라인 캐시용 서비스 워커. 캐시 내용을 바꿔야 할 때는 이 버전
 // 문자열만 올리면 activate 단계에서 옛 캐시가 자동으로 정리된다.
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v4";
 const CACHE_NAME = `srp-offline-${CACHE_VERSION}`;
 
 // 모두 sw.js(저장소 루트) 기준 상대경로 — GitHub Pages(서브경로)와
@@ -10,8 +10,11 @@ const PRECACHE_URLS = [
   "./index.html",
   "./manifest.json",
   "./css/style.css",
+  "./fonts/PretendardVariable.woff2",
+  "./fonts/BlackHanSans-Regular.ttf",
   "./js/app.js",
   "./js/data.js",
+  "./js/vendor/gsap.min.js",
   "./js/initials.js",
   "./js/practice.js",
   "./js/startHero.js",
