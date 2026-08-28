@@ -211,6 +211,18 @@
       <button id="btn-next" class="card-edge-nav card-edge-nav-next" aria-label="다음 말씀"><span aria-hidden="true">›</span></button>
     </div>
     <div class="status-panel" id="status-panel">
+      <div class="status-guide" id="status-help-wrap">
+        <span class="status-guide-label">현재 암송 상태</span>
+        <button type="button" class="status-help-btn" id="btn-status-help" aria-label="암송 상태 기준 보기" aria-expanded="false">ⓘ</button>
+        <div class="help-popover status-help-popover" id="status-help-popover" role="tooltip">
+          <div class="help-popover-title">암송 상태 기준</div>
+          <dl class="status-help-list">
+            <div><dt>더 익히기</dt><dd>본문 없이 암송이 어려움</dd></div>
+            <div><dt>부분 암기</dt><dd>중간중간 도움이 필요함</dd></div>
+            <div><dt>암기 완료</dt><dd>본문 없이 끝까지 가능</dd></div>
+          </dl>
+        </div>
+      </div>
       <div class="status-segmented" id="status-chip-group">
         <button class="status-chip" data-status="learning"><span class="status-icon">○</span><span class="status-label">더 익히기</span></button>
         <button class="status-chip" data-status="partial"><span class="status-icon">◐</span><span class="status-label">부분 암기</span></button>

@@ -1106,10 +1106,10 @@ function applyRange() {
   renderCard();
 }
 
-function initAutoAdvanceHelp() {
-  const btn = document.getElementById("btn-auto-advance-help");
-  const popover = document.getElementById("auto-advance-popover");
-  const wrap = document.getElementById("auto-advance-help-wrap");
+function initHelpPopover(btnId, popoverId, wrapId) {
+  const btn = document.getElementById(btnId);
+  const popover = document.getElementById(popoverId);
+  const wrap = document.getElementById(wrapId);
   if (!btn || !popover || !wrap) return;
 
   function positionPopover() {
@@ -1431,7 +1431,8 @@ function init() {
     setAutoAdvance(state.autoAdvance);
   });
 
-  initAutoAdvanceHelp();
+  initHelpPopover("btn-auto-advance-help", "auto-advance-popover", "auto-advance-help-wrap");
+  initHelpPopover("btn-status-help", "status-help-popover", "status-help-wrap");
 
   document.getElementById("btn-font-decrease").addEventListener("click", e => {
     // font-size-control도 verse-card 안에 있어 같은 이유로 버블링을 막는다.
