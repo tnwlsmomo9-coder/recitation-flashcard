@@ -24,6 +24,7 @@ const state = {
   // 말씀구절 선택 화면에서 현재 펼쳐져 있는 권(한 번에 하나만 펼쳐진다). null이면 전부 접힘.
   pendingCustomOpenBook: null,
   tocFilter: "all",
+  tocStatusFilterVisible: false,
   tocSearch: "",
   // 목차에서 특정 말씀으로 들어가기 직전의 스크롤 위치. "‹ 목차"로
   // 돌아왔을 때 이 위치로 복원한다.
@@ -38,6 +39,11 @@ const state = {
   autoAdvance: true,
   autoAdvanceTimer: null,
   verseFontSize: clampToFontStep(getVerseFontSize()),
+  writingProgress: 0,
+  writingSegmentStart: 0,
+  writingCompleted: false,
+  writingMethod: "visible",
+  writingChecked: false,
   randomRevealed: false,
   singleVerseCheck: false,
   // 암송점검(여러 구절) 중에 말씀익히기로 잠깐 넘어갔을 때, 그 여러 구절
@@ -57,6 +63,14 @@ function shuffle(arr) {
 
 function escapeHtml(str) {
   return str.replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+function renderLessonVerseRef(ref) {
+  const separatorIndex = ref.lastIndexOf(" ");
+  if (separatorIndex === -1) return escapeHtml(ref);
+  const bookName = escapeHtml(ref.slice(0, separatorIndex));
+  const chapterAndVerse = escapeHtml(ref.slice(separatorIndex + 1));
+  return `<span class="lesson-ref-book">${bookName}</span> <span class="lesson-ref-passage">${chapterAndVerse}</span>`;
 }
 
 function renderVerseTextWithEmphasis(text) {
@@ -99,26 +113,26 @@ function continueLearning() {
 /* ---------- 목차 화면 ---------- */
 function renderToc() {
   renderBookTabs();
+  renderStatusFilterVisibility();
   renderLessonList();
 }
 
 function selectBookTab(bookIdOrAll) {
-  const filterEl = document.getElementById("status-filter");
   if (state.activeBookTab === bookIdOrAll) {
-    filterEl.classList.toggle("visible");
+    state.tocStatusFilterVisible = !state.tocStatusFilterVisible;
   } else {
     state.activeBookTab = bookIdOrAll;
-    filterEl.classList.remove("visible");
-    if (bookIdOrAll === "all") {
-      delete filterEl.dataset.book;
-    } else {
-      filterEl.dataset.book = bookIdOrAll;
-    }
-    state.tocFilter = "all";
-    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    state.tocStatusFilterVisible = true;
   }
   renderBookTabs();
+  renderStatusFilterVisibility();
   renderLessonList();
+}
+
+function renderStatusFilterVisibility() {
+  const filterEl = document.getElementById("status-filter");
+  filterEl.classList.toggle("visible", state.tocStatusFilterVisible);
+  filterEl.setAttribute("aria-hidden", String(!state.tocStatusFilterVisible));
 }
 
 function renderBookTabs() {
@@ -130,6 +144,8 @@ function renderBookTabs() {
   const allActive = state.activeBookTab === "all";
   allBtn.className = "book-tab" + (allActive ? " active" : "");
   allBtn.setAttribute("aria-pressed", String(allActive));
+  allBtn.setAttribute("aria-expanded", String(allActive && state.tocStatusFilterVisible));
+  allBtn.setAttribute("aria-controls", "status-filter");
   allBtn.textContent = "전체";
   allBtn.addEventListener("click", () => selectBookTab("all"));
   container.appendChild(allBtn);
@@ -140,6 +156,8 @@ function renderBookTabs() {
     const isActive = book.id === state.activeBookTab;
     btn.className = "book-tab" + (isActive ? " active" : "");
     btn.setAttribute("aria-pressed", String(isActive));
+    btn.setAttribute("aria-expanded", String(isActive && state.tocStatusFilterVisible));
+    btn.setAttribute("aria-controls", "status-filter");
     btn.textContent = book.title;
     btn.addEventListener("click", () => selectBookTab(book.id));
     container.appendChild(btn);
@@ -195,10 +213,16 @@ function renderLessonList() {
     const titleZone = document.createElement("button");
     titleZone.type = "button";
     titleZone.className = "lesson-title-zone";
+    titleZone.setAttribute("aria-label", `${lessonNumberLabel} ${lesson.title}, 이 과 전체 학습`);
     titleZone.innerHTML = `
       <span class="lesson-heading">
         <span class="lesson-number type-caption">${lessonNumberLabel}</span>
         <span class="lesson-title">${lesson.title}</span>
+      </span>
+      <span class="lesson-enter-all" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m9 18 6-6-6-6"></path>
+        </svg>
       </span>
     `;
     titleZone.addEventListener("click", () => enterLesson(book.id, lesson.id));
@@ -211,7 +235,7 @@ function renderLessonList() {
       verseZone.className = "lesson-verse-zone" + (v.id === lastVerseId ? " last-closed" : "");
       verseZone.innerHTML = `
         <span class="lesson-verse-ordinal">${VERSE_ORDINAL_MARKS[i] || ""}</span>
-        <span class="lesson-verse-ref">${v.ref}</span>
+        <span class="lesson-verse-ref">${renderLessonVerseRef(v.ref)}</span>
         <span class="status-dot status-${status}">${STATUS_LABEL[status]}</span>
       `;
       verseZone.addEventListener("click", () => enterLesson(book.id, lesson.id, i));
@@ -220,6 +244,7 @@ function renderLessonList() {
 
     list.appendChild(li);
   });
+
 }
 
 function enterLesson(bookId, lessonId, verseIndex = 0) {
@@ -234,34 +259,6 @@ function enterLesson(bookId, lessonId, verseIndex = 0) {
   resetPracticeState();
   updateModeButtons();
   showScreen("card");
-  renderCard();
-}
-
-function checkCurrentVerse() {
-  // 암송점검(여러 구절) 세션 중 말씀익히기로 넘어갔다가 다시 암송점검을
-  // 누른 것이면, 새로 1구절만 확인하는 대신 그 원래 세션을 그대로
-  // 이어간다.
-  if (state.pausedRandomSession) {
-    const { queue, queueIndex } = state.pausedRandomSession;
-    state.pausedRandomSession = null;
-    state.mode = "random";
-    state.singleVerseCheck = false;
-    state.queue = queue;
-    state.queueIndex = queueIndex;
-    resetPracticeState();
-    updateModeButtons();
-    renderCard();
-    return;
-  }
-
-  const currentVerseId = state.queue[state.queueIndex];
-  if (!currentVerseId) return;
-  state.mode = "random";
-  state.singleVerseCheck = true;
-  state.queue = [currentVerseId];
-  state.queueIndex = 0;
-  resetPracticeState();
-  updateModeButtons();
   renderCard();
 }
 
@@ -280,12 +277,12 @@ function resetPracticeState() {
 
 function updateModeButtons() {
   const seqBtn = document.getElementById("btn-mode-sequential");
-  const randBtn = document.getElementById("btn-mode-random");
+  const writingBtn = document.getElementById("btn-mode-writing");
   const isSequential = state.mode === "sequential";
   seqBtn.classList.toggle("active", isSequential);
-  randBtn.classList.toggle("active", !isSequential);
+  writingBtn.classList.remove("active");
   seqBtn.setAttribute("aria-pressed", String(isSequential));
-  randBtn.setAttribute("aria-pressed", String(!isSequential));
+  writingBtn.setAttribute("aria-pressed", "false");
 }
 
 function switchToSequential() {
@@ -381,7 +378,7 @@ function renderInitialsHtml(verse) {
   return `
     <div class="initials-text">${escapeHtml(toInitials(verse.text))}</div>
     <div class="practice-actions">
-      <button type="button" class="btn btn-outline btn-chip" data-action="initials-check">암송 확인하기</button>
+      <button type="button" class="btn btn-outline btn-chip" data-action="initials-check">확인하기</button>
     </div>
   `;
 }
@@ -404,6 +401,12 @@ function renderPracticePanel(verseId, verse) {
   const autoAdvanceRow = document.querySelector(".auto-advance-row");
 
   const isRandom = state.mode === "random";
+  const modeToggle = document.querySelector("#screen-card .mode-toggle");
+  const recitationModeLabel = document.getElementById("recitation-mode-label");
+  const backButton = document.getElementById("btn-back-toc");
+  modeToggle.style.display = isRandom ? "none" : "flex";
+  recitationModeLabel.hidden = !isRandom;
+  backButton.textContent = isRandom ? "‹ 암송 범위" : "‹ 목차";
   const isCollapsed = isRandom && !state.randomRevealed;
   // 나눠보기/빈칸암기는 단계적으로 훑어보는 연습일 뿐이라 암송 상태 확인
   // 칩을 두지 않는다 — 상태 기록은 전체 탭과, 첫 글자 끝의 완전 암송
@@ -412,8 +415,8 @@ function renderPracticePanel(verseId, verse) {
   const hideStatusCheck = state.practiceMode === "lineByLine" || state.practiceMode === "progressive";
   verseCard.classList.toggle("collapsed", isCollapsed);
   tapHint.style.display = isCollapsed ? "flex" : "none";
-  fontControl.style.display = isCollapsed ? "none" : "flex";
-  tabs.style.display = isCollapsed || isRandom ? "none" : "flex";
+  fontControl.style.display = isRandom ? "none" : "flex";
+  tabs.style.display = isRandom ? "none" : "flex";
   statusPanel.style.display = isCollapsed || hideStatusCheck ? "none" : "flex";
   statusBadge.style.display = isCollapsed ? "none" : "";
   autoAdvanceRow.style.display = isCollapsed || state.singleVerseCheck || hideStatusCheck ? "none" : "flex";
@@ -509,6 +512,307 @@ function renderCard() {
   renderPracticePanel(verseId, verse);
 
   setLastVerseId(verseId);
+}
+
+/* ---------- 필사하기 화면 ---------- */
+function normalizeWritingText(text) {
+  return text.replace(/[^\uac00-\ud7a30-9]/g, "");
+}
+
+function getComparableCharacters(text) {
+  return Array.from(text)
+    .map((char, index) => ({ char, index }))
+    .filter(item => /[\uac00-\ud7a30-9]/.test(item.char));
+}
+
+function getWritingComparison(original, draft) {
+  const expected = getComparableCharacters(original);
+  const actual = getComparableCharacters(draft);
+  const rows = expected.length + 1;
+  const cols = actual.length + 1;
+  const lengths = Array.from({ length: rows }, () => new Uint16Array(cols));
+
+  for (let i = 1; i < rows; i += 1) {
+    for (let j = 1; j < cols; j += 1) {
+      lengths[i][j] = expected[i - 1].char === actual[j - 1].char
+        ? lengths[i - 1][j - 1] + 1
+        : Math.max(lengths[i - 1][j], lengths[i][j - 1]);
+    }
+  }
+
+  const operations = [];
+  let i = expected.length;
+  let j = actual.length;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && expected[i - 1].char === actual[j - 1].char) {
+      operations.push({ type: "match", expected: expected[i - 1], actual: actual[j - 1] });
+      i -= 1;
+      j -= 1;
+    } else if (j > 0 && (i === 0 || lengths[i][j - 1] > lengths[i - 1][j])) {
+      operations.push({ type: "extra", actual: actual[j - 1] });
+      j -= 1;
+    } else {
+      operations.push({ type: "missing", expected: expected[i - 1] });
+      i -= 1;
+    }
+  }
+  operations.reverse();
+
+  const extraIndices = new Set();
+  const missingExpectedIndices = new Set();
+  operations.forEach(operation => {
+    if (operation.type === "missing") {
+      missingExpectedIndices.add(operation.expected.index);
+      return;
+    }
+    if (operation.type === "extra") extraIndices.add(operation.actual.index);
+  });
+
+  const draftCharacters = Array.from(draft);
+  const reviewedHtml = draftCharacters.map((char, index) => {
+    const escaped = escapeHtml(char);
+    const rendered = extraIndices.has(index)
+      ? `<mark class="writing-extra" aria-label="틀리거나 추가된 내용">${escaped}</mark>`
+      : escaped;
+    return rendered;
+  }).join("");
+
+  const originalReviewedHtml = Array.from(original).map((char, index) => {
+    const escaped = escapeHtml(char);
+    return missingExpectedIndices.has(index)
+      ? `<mark class="writing-original-mismatch" aria-label="틀리거나 빠진 원문">${escaped}</mark>`
+      : escaped;
+  }).join("");
+
+  return {
+    reviewedHtml,
+    originalReviewedHtml,
+    hasDifferences: operations.some(operation => operation.type !== "match")
+  };
+}
+
+function resizeWritingInput() {
+  const input = document.getElementById("writing-input");
+  input.style.height = "auto";
+  const maxHeight = Number.parseFloat(getComputedStyle(input).maxHeight);
+  const nextHeight = Number.isFinite(maxHeight) ? Math.min(input.scrollHeight, maxHeight) : input.scrollHeight;
+  input.style.height = `${nextHeight}px`;
+  input.style.overflowY = Number.isFinite(maxHeight) && input.scrollHeight > maxHeight ? "auto" : "hidden";
+}
+
+function getWritingChunks(verse) {
+  return Array.isArray(verse.memorizationChunks) && verse.memorizationChunks.length > 0
+    ? verse.memorizationChunks
+    : [verse.text];
+}
+
+function renderWritingOriginal(verse) {
+  const chunks = getWritingChunks(verse);
+  const progress = Math.min(state.writingProgress, chunks.length);
+  document.getElementById("writing-original").innerHTML = chunks
+    .map((chunk, index) => {
+      const classes = ["writing-chunk"];
+      if (index < progress) classes.push("completed");
+      if (!state.writingCompleted && index === progress) classes.push("current");
+      return `<span class="${classes.join(" ")}">${escapeHtml(chunk)}</span>`;
+    })
+    .join(" ");
+}
+
+function renderWriting() {
+  const verseId = state.queue[state.queueIndex];
+  const found = findVerseById(verseId);
+  if (!found) return;
+  const { book, lesson, verse } = found;
+  const verseOrdinal = VERSE_ORDINAL_MARKS[lesson.verses.indexOf(verse)] || "";
+
+  document.getElementById("writing-meta").textContent = `${book.title} · ${lesson.id}과`;
+  document.getElementById("writing-title").textContent = verseOrdinal ? `${lesson.title} ${verseOrdinal}` : lesson.title;
+  document.getElementById("writing-ref").textContent = verse.ref;
+  const visibleMethod = state.writingMethod === "visible";
+  document.querySelectorAll(".writing-method-btn").forEach(btn => {
+    const active = btn.id === (visibleMethod ? "btn-writing-visible" : "btn-writing-recall");
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-pressed", String(active));
+  });
+
+  const original = document.getElementById("writing-original");
+  original.hidden = !visibleMethod;
+  if (visibleMethod) renderWritingOriginal(verse);
+
+  const input = document.getElementById("writing-input");
+  document.getElementById("writing-input-label").textContent = "말씀 필사";
+  input.value = "";
+  input.hidden = false;
+  input.readOnly = false;
+  input.placeholder = visibleMethod ? "강조된 구간을 그대로 입력해 보세요" : "기억나는 말씀 전체를 입력해 보세요";
+  resizeWritingInput();
+
+  const feedback = document.getElementById("writing-feedback");
+  feedback.textContent = state.writingCompleted ? "필사를 완료했어요." : "";
+  feedback.classList.toggle("success", state.writingCompleted);
+  feedback.classList.remove("error");
+  document.getElementById("btn-writing-check").style.display = visibleMethod ? "none" : "block";
+  document.getElementById("btn-writing-retry").style.display = "none";
+  const reviewed = document.getElementById("writing-reviewed");
+  reviewed.hidden = true;
+  reviewed.innerHTML = "";
+  const answerOriginal = document.getElementById("writing-answer-original");
+  answerOriginal.hidden = true;
+  answerOriginal.textContent = "";
+
+  const prevBtn = document.getElementById("btn-writing-prev");
+  const nextBtn = document.getElementById("btn-writing-next");
+  if (state.mode === "sequential") {
+    prevBtn.disabled = state.queueIndex === 0;
+    const isLastBook = BOOKS.findIndex(bookItem => bookItem.id === state.activeBookTab) === BOOKS.length - 1;
+    nextBtn.disabled = state.queueIndex === state.queue.length - 1 && isLastBook;
+  } else {
+    prevBtn.disabled = false;
+    nextBtn.disabled = false;
+  }
+  document.getElementById("writing-pager-count").textContent = `${state.queueIndex + 1} / ${state.queue.length}`;
+  setLastVerseId(verseId);
+}
+
+function resetWritingAttempt() {
+  state.writingProgress = 0;
+  state.writingSegmentStart = 0;
+  state.writingCompleted = false;
+  state.writingChecked = false;
+  const input = document.getElementById("writing-input");
+  if (input) {
+    input.value = "";
+    resizeWritingInput();
+  }
+  const feedback = document.getElementById("writing-feedback");
+  if (feedback) {
+    feedback.textContent = "";
+    feedback.classList.remove("success", "error");
+  }
+  const reviewed = document.getElementById("writing-reviewed");
+  if (reviewed) {
+    reviewed.hidden = true;
+    reviewed.innerHTML = "";
+  }
+  const answerOriginal = document.getElementById("writing-answer-original");
+  if (answerOriginal) {
+    answerOriginal.hidden = true;
+    answerOriginal.textContent = "";
+  }
+}
+
+function resetWritingState() {
+  state.writingMethod = "visible";
+  resetWritingAttempt();
+}
+
+function enterWriting() {
+  if (!state.queue[state.queueIndex]) return;
+  resetWritingState();
+  showScreen("writing");
+  renderWriting();
+}
+
+function exitWriting() {
+  resetWritingState();
+  showScreen("card");
+  if (state.mode === "sequential") {
+    updateModeButtons();
+    renderCard();
+  } else {
+    switchToSequential();
+  }
+}
+
+function exitWritingToToc() {
+  resetWritingState();
+  state.mode = "sequential";
+  state.singleVerseCheck = false;
+  state.pausedRandomSession = null;
+  showScreen("toc");
+  renderToc();
+  requestAnimationFrame(() => window.scrollTo(0, state.tocScrollY));
+}
+
+function checkCurrentWritingChunk() {
+  if (state.writingMethod !== "visible") return false;
+  const verseId = state.queue[state.queueIndex];
+  const found = findVerseById(verseId);
+  if (!found) return false;
+  const chunks = getWritingChunks(found.verse);
+  const input = document.getElementById("writing-input");
+  const feedback = document.getElementById("writing-feedback");
+  const progress = state.writingProgress;
+
+  if (progress >= chunks.length) {
+    return false;
+  }
+
+  const currentChunk = chunks[progress];
+  const segmentStart = Math.min(state.writingSegmentStart, input.value.length);
+  const currentInput = input.value.slice(segmentStart);
+  const isMatch = normalizeWritingText(currentChunk) === normalizeWritingText(currentInput) && normalizeWritingText(currentInput).length > 0;
+
+  if (!isMatch) return false;
+
+  const nextProgress = progress + 1;
+  const completed = nextProgress >= chunks.length;
+  state.writingProgress = nextProgress;
+  state.writingSegmentStart = input.value.length;
+  state.writingCompleted = completed;
+  renderWritingOriginal(found.verse);
+  feedback.textContent = completed ? "필사를 완료했어요." : "";
+  feedback.classList.toggle("success", completed);
+  feedback.classList.remove("error");
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  return true;
+}
+
+function selectWritingMethod(method) {
+  if (state.writingMethod === method) return;
+  state.writingMethod = method;
+  resetWritingAttempt();
+  renderWriting();
+  document.getElementById("writing-input").focus();
+}
+
+function checkRecallWriting() {
+  if (state.writingMethod !== "recall" || state.writingChecked) return;
+  const found = findVerseById(state.queue[state.queueIndex]);
+  if (!found) return;
+  const input = document.getElementById("writing-input");
+  const draft = input.value;
+  const completed = normalizeWritingText(found.verse.text) === normalizeWritingText(draft) && normalizeWritingText(draft).length > 0;
+  const comparisonResult = getWritingComparison(found.verse.text, draft);
+
+  state.writingChecked = true;
+  state.writingCompleted = completed;
+  input.hidden = true;
+  document.getElementById("btn-writing-check").style.display = "none";
+  document.getElementById("btn-writing-retry").style.display = "block";
+
+  const feedback = document.getElementById("writing-feedback");
+  feedback.textContent = completed ? "필사를 완료했어요." : "원문과 다른 부분을 확인해 보세요.";
+  feedback.classList.toggle("success", completed);
+  feedback.classList.toggle("error", !completed);
+
+  const reviewed = document.getElementById("writing-reviewed");
+  document.getElementById("writing-input-label").textContent = "내가 쓴 말씀";
+  reviewed.hidden = false;
+  reviewed.innerHTML = comparisonResult.reviewedHtml || "<span class=\"writing-empty-answer\">입력한 내용이 없어요.</span>";
+
+  const answerOriginal = document.getElementById("writing-answer-original");
+  answerOriginal.hidden = false;
+  answerOriginal.innerHTML = `<div class="writing-answer-label">원문 전체</div><div class="writing-answer-text">${comparisonResult.originalReviewedHtml}</div>`;
+}
+
+function retryRecallWriting() {
+  if (state.writingMethod !== "recall") return;
+  resetWritingAttempt();
+  renderWriting();
+  document.getElementById("writing-input").focus();
 }
 
 function goNext() {
@@ -631,6 +935,10 @@ function selectScope(scope) {
 // 펼쳐둔 권과 체크 상태(state.pendingCustomOpenBook/pendingCustomIds)는
 // 그대로 남는다 — 다시 들어오면 이어서 보인다.
 function showCustomPickerScreen() {
+  if (state.pendingCustomOpenBook == null) {
+    const activeBookExists = BOOKS.some(book => book.id === state.activeBookTab);
+    state.pendingCustomOpenBook = activeBookExists ? state.activeBookTab : BOOKS[0].id;
+  }
   document.getElementById("range-option-list").style.display = "none";
   document.getElementById("custom-picker-screen").classList.add("visible");
   document.getElementById("modal-range-title").style.display = "none";
@@ -674,10 +982,12 @@ function renderCustomPickerTabs() {
     btn.type = "button";
     const isActive = state.pendingCustomOpenBook === book.id;
     btn.className = "book-tab" + (isActive ? " active" : "");
+    btn.setAttribute("role", "tab");
+    btn.setAttribute("aria-selected", String(isActive));
     btn.setAttribute("aria-pressed", String(isActive));
     btn.textContent = book.title;
     btn.addEventListener("click", () => {
-      state.pendingCustomOpenBook = isActive ? null : book.id;
+      state.pendingCustomOpenBook = book.id;
       renderCustomPicker();
     });
     container.appendChild(btn);
@@ -877,6 +1187,9 @@ function init() {
   });
   const tocSearchInput = document.getElementById("toc-search-input");
   const tocSearchClear = document.getElementById("toc-search-clear");
+  document.querySelector(".toc-search").addEventListener("click", e => {
+    if (!e.target.closest("button")) tocSearchInput.focus();
+  });
   tocSearchInput.addEventListener("input", e => {
     state.tocSearch = e.target.value;
     tocSearchClear.classList.toggle("visible", e.target.value.length > 0);
@@ -903,13 +1216,20 @@ function init() {
       renderLessonList();
     });
   });
-  document.getElementById("btn-toc-random").addEventListener("click", openRangeModal);
+  document.getElementById("btn-toc-random").addEventListener("click", () => {
+    state.tocScrollY = window.scrollY;
+    openRangeModal();
+  });
   document.getElementById("btn-toc-home").addEventListener("click", () => {
     showScreen("start");
     restartStartHero();
   });
 
   document.getElementById("btn-back-toc").addEventListener("click", () => {
+    if (state.mode === "random" && !state.singleVerseCheck) {
+      openRangeModal();
+      return;
+    }
     // 말씀익히기 페이지에서 "현재 구절만" 확인하던 상태(암송점검 토글로
     // 들어간 단일 구절 확인)를 목록으로 나가면서 닫는다 — 안 그러면 이
     // 값이 남아 있다가 목록의 암송점검이 다시 열릴 때 영향을 줄 수 있다.
@@ -922,17 +1242,60 @@ function init() {
     // 아직 확정되지 않은 상태에서 어긋나는 일이 없다.
     requestAnimationFrame(() => window.scrollTo(0, state.tocScrollY));
   });
+  document.getElementById("recitation-mode-label").addEventListener("click", () => {
+    if (state.mode !== "random") return;
+    state.mode = "sequential";
+    state.singleVerseCheck = false;
+    state.pausedRandomSession = null;
+    showScreen("toc");
+    renderToc();
+    requestAnimationFrame(() => window.scrollTo(0, state.tocScrollY));
+  });
   document.getElementById("btn-mode-sequential").addEventListener("click", switchToSequential);
-  document.getElementById("btn-mode-random").addEventListener("click", checkCurrentVerse);
+  document.getElementById("btn-mode-writing").addEventListener("click", enterWriting);
+  document.getElementById("btn-writing-toc").addEventListener("click", exitWritingToToc);
+  document.getElementById("btn-writing-mode-sequential").addEventListener("click", exitWriting);
+  document.getElementById("btn-writing-visible").addEventListener("click", () => selectWritingMethod("visible"));
+  document.getElementById("btn-writing-recall").addEventListener("click", () => selectWritingMethod("recall"));
+  document.getElementById("btn-writing-check").addEventListener("click", checkRecallWriting);
+  document.getElementById("btn-writing-retry").addEventListener("click", retryRecallWriting);
+  document.getElementById("writing-input").addEventListener("input", e => {
+    const verseId = state.queue[state.queueIndex];
+    if (!verseId) return;
+    const found = findVerseById(verseId);
+    if (!found) return;
+    const chunks = getWritingChunks(found.verse);
+    resizeWritingInput();
+    if (state.writingCompleted || state.writingProgress >= chunks.length) return;
+    const feedback = document.getElementById("writing-feedback");
+    feedback.textContent = "";
+    feedback.classList.remove("success", "error");
+    if (!e.isComposing) checkCurrentWritingChunk();
+  });
+  document.getElementById("writing-input").addEventListener("compositionend", checkCurrentWritingChunk);
+  window.addEventListener("resize", resizeWritingInput);
+  document.getElementById("btn-writing-prev").addEventListener("click", () => {
+    resetWritingAttempt();
+    goPrev();
+    renderWriting();
+  });
+  document.getElementById("btn-writing-next").addEventListener("click", () => {
+    resetWritingAttempt();
+    goNext();
+    renderWriting();
+  });
 
   const verseCard = document.getElementById("verse-card");
   let touchStartX = 0;
   let touchStartY = 0;
   let isHorizontalSwipe = false;
   let swipeHandled = false;
+  let ignoreCardSwipe = false;
   const SWIPE_THRESHOLD = 50;
 
   verseCard.addEventListener("touchstart", e => {
+    ignoreCardSwipe = e.touches.length !== 1 || Boolean(e.target.closest("button, input, textarea, select, a, label, [contenteditable]"));
+    if (ignoreCardSwipe) return;
     const t = e.touches[0];
     touchStartX = t.clientX;
     touchStartY = t.clientY;
@@ -940,6 +1303,7 @@ function init() {
   }, { passive: true });
 
   verseCard.addEventListener("touchmove", e => {
+    if (ignoreCardSwipe) return;
     const t = e.touches[0];
     const dx = t.clientX - touchStartX;
     const dy = t.clientY - touchStartY;
@@ -949,15 +1313,15 @@ function init() {
   }, { passive: true });
 
   verseCard.addEventListener("touchend", e => {
-    if (!isHorizontalSwipe) return;
+    if (ignoreCardSwipe || !isHorizontalSwipe) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touchStartX;
     if (Math.abs(dx) < SWIPE_THRESHOLD) return;
     swipeHandled = true;
     if (dx < 0) {
-      goNext();
+      if (!document.getElementById("btn-next").disabled) goNext();
     } else {
-      goPrev();
+      if (!document.getElementById("btn-prev").disabled) goPrev();
     }
   });
 
@@ -975,6 +1339,7 @@ function init() {
   document.getElementById("practice-tabs").addEventListener("click", e => {
     const btn = e.target.closest(".practice-tab");
     if (!btn) return;
+    e.stopPropagation();
     const mode = btn.dataset.mode;
     state.practiceMode = mode;
     // 탭을 직접 눌러 들어온 것이므로("이 루트"가 아니므로) 첫 글자→전체
@@ -995,6 +1360,7 @@ function init() {
   document.getElementById("practice-body").addEventListener("click", e => {
     const target = e.target.closest("[data-action]");
     if (!target) return;
+    e.stopPropagation();
     const action = target.dataset.action;
     if (action === "lbl-next") {
       state.lineByLineStep += 1;
@@ -1033,8 +1399,14 @@ function init() {
     renderCard();
   });
 
-  document.getElementById("btn-prev").addEventListener("click", () => goPrev());
-  document.getElementById("btn-next").addEventListener("click", () => goNext());
+  document.getElementById("btn-prev").addEventListener("click", e => {
+    e.stopPropagation();
+    goPrev();
+  });
+  document.getElementById("btn-next").addEventListener("click", e => {
+    e.stopPropagation();
+    goNext();
+  });
 
   document.querySelectorAll(".status-chip").forEach(chip => {
     chip.addEventListener("click", e => {
@@ -1102,7 +1474,10 @@ function init() {
   // 말씀을 보고 있었는지는 목록의 연한보라색 표시로 확인할 수 있다).
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "hidden") return;
-    if (!document.getElementById("screen-card").classList.contains("active")) return;
+    const cardActive = document.getElementById("screen-card").classList.contains("active");
+    const writingActive = document.getElementById("screen-writing").classList.contains("active");
+    if (!cardActive && !writingActive) return;
+    if (writingActive) resetWritingState();
     showScreen("toc");
     renderToc();
   });

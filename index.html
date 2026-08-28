@@ -128,30 +128,32 @@
         </svg>
         <span class="start-kicker">신천중부교회 · 제자훈련반</span>
       </button>
-      <button id="btn-toc-random" class="toc-action-link">암송점검 →</button>
     </div>
 
     <div class="book-tabs" id="book-tabs"></div>
   </div>
 
   <div class="toc-search-filter-group">
-    <div class="toc-search">
-      <svg class="toc-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" aria-hidden="true">
-        <circle cx="11" cy="11" r="8"></circle>
-        <path d="m21 21-4.3-4.3"></path>
-      </svg>
-      <input type="text" id="toc-search-input" class="toc-search-input" placeholder="말씀, 구절, 과 제목 검색" autocomplete="off">
-      <button type="button" class="toc-search-clear" id="toc-search-clear" aria-label="검색어 지우기">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-          <path d="M18 6 6 18"></path>
-          <path d="M6 6l12 12"></path>
+    <div class="toc-search-action-row">
+      <div class="toc-search">
+        <svg class="toc-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
         </svg>
-      </button>
+        <input type="text" id="toc-search-input" class="toc-search-input" placeholder="말씀, 구절, 과 제목 검색" autocomplete="off">
+        <button type="button" class="toc-search-clear" id="toc-search-clear" aria-label="검색어 지우기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+            <path d="M18 6 6 18"></path>
+            <path d="M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <button id="btn-toc-random" class="toc-action-link"><span>랜덤 암송</span><span aria-hidden="true">›</span></button>
     </div>
     <div class="status-filter" id="status-filter">
-      <button class="filter-btn active" data-filter="learning">더 익히기 ○</button>
-      <button class="filter-btn" data-filter="partial">부분 암기 ◐</button>
-      <button class="filter-btn" data-filter="memorized">암기 완료 ✓</button>
+      <button class="filter-btn" data-filter="learning">○ 더 익히기</button>
+      <button class="filter-btn" data-filter="partial">◐ 부분 암기</button>
+      <button class="filter-btn" data-filter="memorized">✓ 암기 완료</button>
     </div>
   </div>
 
@@ -164,14 +166,18 @@
     <button id="btn-back-toc" class="text-link-btn">‹ 목차</button>
     <div class="mode-toggle">
       <button id="btn-mode-sequential" class="mode-segment">말씀익히기</button>
-      <button id="btn-mode-random" class="mode-segment">암송점검</button>
+      <button id="btn-mode-writing" class="mode-segment">필사하기</button>
     </div>
+    <button type="button" class="recitation-mode-label" id="recitation-mode-label" hidden>목록으로</button>
   </div>
 
   <div class="verse-card" id="verse-card">
     <div class="verse-card-preview">
       <div class="verse-card-head">
-        <span class="type-caption verse-meta" id="card-meta"></span>
+        <div class="verse-card-meta-group">
+          <span class="type-caption verse-meta" id="card-meta"></span>
+          <span class="pager-count" id="pager-count"></span>
+        </div>
         <span class="verse-status-badge" id="card-status-badge"></span>
       </div>
       <div class="type-display verse-title" id="card-title"></div>
@@ -193,8 +199,12 @@
       <button class="practice-tab" data-mode="progressive">빈칸암기</button>
       <button class="practice-tab" data-mode="initials">첫 글자</button>
     </div>
-    <div class="type-body-lg verse-text" id="card-text"></div>
-    <div class="practice-body" id="practice-body"></div>
+    <div class="card-study-area">
+      <button id="btn-prev" class="card-edge-nav card-edge-nav-prev" aria-label="이전 말씀"><span aria-hidden="true">‹</span></button>
+      <div class="type-body-lg verse-text" id="card-text"></div>
+      <div class="practice-body" id="practice-body"></div>
+      <button id="btn-next" class="card-edge-nav card-edge-nav-next" aria-label="다음 말씀"><span aria-hidden="true">›</span></button>
+    </div>
     <div class="status-panel" id="status-panel">
       <div class="status-segmented" id="status-chip-group">
         <button class="status-chip" data-status="learning"><span class="status-icon">○</span><span class="status-label">더 익히기</span></button>
@@ -204,30 +214,67 @@
     </div>
   </div>
 
-  <div class="auto-advance-row">
-    <label class="auto-advance-label">
-      <input type="checkbox" id="chk-auto-advance">
-      <span class="type-body">선택 후 자동으로 다음 말씀</span>
-    </label>
-    <div class="help-wrap" id="auto-advance-help-wrap">
-      <button type="button" class="help-icon-btn" id="btn-auto-advance-help" aria-label="자동으로 다음 말씀 도움말" aria-expanded="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17">
-          <circle cx="12" cy="12" r="10"></circle>
-          <path d="M12 16v-4"></path>
-          <path d="M12 8h.01"></path>
-        </svg>
-      </button>
-      <div class="help-popover" id="auto-advance-popover" role="tooltip">
-        <div class="help-popover-title">자동으로 다음 말씀</div>
-        <div class="help-popover-body">암기 상태를 선택하면 다음 말씀으로 자동으로 넘어가요.</div>
+  <div class="card-bottom-controls">
+    <div class="auto-advance-row">
+      <label class="auto-advance-label">
+        <input type="checkbox" id="chk-auto-advance">
+        <span class="type-body">선택 후 자동으로 다음 말씀</span>
+      </label>
+      <div class="help-wrap" id="auto-advance-help-wrap">
+        <button type="button" class="help-icon-btn" id="btn-auto-advance-help" aria-label="자동으로 다음 말씀 도움말" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 16v-4"></path>
+            <path d="M12 8h.01"></path>
+          </svg>
+        </button>
+        <div class="help-popover" id="auto-advance-popover" role="tooltip">
+          <div class="help-popover-title">자동으로 다음 말씀</div>
+          <div class="help-popover-body">암기 상태를 선택하면 다음 말씀으로 자동으로 넘어가요.</div>
+        </div>
       </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- 4. 필사하기 화면 -->
+<section id="screen-writing" class="screen">
+  <div class="card-topbar">
+    <button id="btn-writing-toc" class="text-link-btn">‹ 목차</button>
+    <div class="mode-toggle">
+      <button id="btn-writing-mode-sequential" class="mode-segment" aria-pressed="false">말씀익히기</button>
+      <button id="btn-writing-mode-writing" class="mode-segment active" aria-pressed="true">필사하기</button>
     </div>
   </div>
 
-  <div class="verse-pager">
-    <button id="btn-prev" class="pager-btn" aria-label="이전 말씀"><span class="pager-arrow">‹</span> <span class="pager-label">이전</span></button>
-    <span class="pager-count" id="pager-count"></span>
-    <button id="btn-next" class="pager-btn" aria-label="다음 말씀"><span class="pager-label">다음</span> <span class="pager-arrow">›</span></button>
+  <div class="writing-content">
+    <header class="writing-header">
+      <span class="type-caption writing-meta" id="writing-meta"></span>
+      <h2 class="writing-title" id="writing-title"></h2>
+      <div class="writing-ref" id="writing-ref"></div>
+    </header>
+
+    <div class="writing-method-toggle" aria-label="필사 방식 선택">
+      <button type="button" class="writing-method-btn active" id="btn-writing-visible" aria-pressed="true">따라쓰기</button>
+      <button type="button" class="writing-method-btn" id="btn-writing-recall" aria-pressed="false">암송쓰기</button>
+    </div>
+
+    <div class="writing-original" id="writing-original"></div>
+
+    <label class="writing-input-label" id="writing-input-label" for="writing-input">말씀 필사</label>
+    <textarea id="writing-input" class="writing-input" rows="4" placeholder="강조된 구간을 그대로 입력해 보세요" spellcheck="false"></textarea>
+    <div class="writing-reviewed" id="writing-reviewed" hidden></div>
+    <div class="writing-feedback" id="writing-feedback" aria-live="polite"></div>
+    <button type="button" class="btn btn-primary btn-block writing-check-btn" id="btn-writing-check">확인하기</button>
+    <div class="writing-answer-original" id="writing-answer-original" hidden></div>
+    <button type="button" class="btn btn-outline btn-block writing-retry-btn" id="btn-writing-retry">다시 써보기</button>
+  </div>
+
+  <div class="verse-pager writing-pager">
+    <button id="btn-writing-prev" class="pager-btn" aria-label="이전 말씀"><span class="pager-arrow">‹</span> <span class="pager-label">이전</span></button>
+    <span class="pager-count" id="writing-pager-count"></span>
+    <button id="btn-writing-next" class="pager-btn" aria-label="다음 말씀"><span class="pager-label">다음</span> <span class="pager-arrow">›</span></button>
   </div>
 </section>
 
@@ -241,16 +288,24 @@
     </div>
 
     <div id="range-option-list">
-      <button class="range-option" data-scope="currentBook">현재 권 내</button>
-      <button class="range-option" data-scope="all">전체 64구절</button>
-      <button class="range-option" data-scope="learning">더 익히기 ○</button>
-      <button class="range-option" data-scope="partial">부분 암기 ◐</button>
-      <button class="range-option" data-scope="memorized">암기 완료 ✓</button>
-      <button class="range-option" data-scope="custom">말씀구절 선택</button>
+      <section class="range-option-group" aria-labelledby="range-scope-label">
+        <h4 class="range-option-group-label" id="range-scope-label">범위 선택</h4>
+        <button class="range-option" data-scope="currentBook"><span>현재 권 내</span><span class="range-option-arrow" aria-hidden="true">›</span></button>
+        <button class="range-option" data-scope="all"><span>전체 64구절</span><span class="range-option-arrow" aria-hidden="true">›</span></button>
+      </section>
+      <section class="range-option-group" aria-labelledby="range-status-label">
+        <h4 class="range-option-group-label" id="range-status-label">암송 상태</h4>
+        <button class="range-option" data-scope="learning"><span>더 익히기 ○</span><span class="range-option-arrow" aria-hidden="true">›</span></button>
+        <button class="range-option" data-scope="partial"><span>부분 암기 ◐</span><span class="range-option-arrow" aria-hidden="true">›</span></button>
+        <button class="range-option" data-scope="memorized"><span>암기 완료 ✓</span><span class="range-option-arrow" aria-hidden="true">›</span></button>
+      </section>
+      <section class="range-option-group range-option-custom-group" aria-label="직접 선택">
+        <button class="range-option" data-scope="custom"><span>말씀구절 직접 선택</span><span class="range-option-arrow" aria-hidden="true">›</span></button>
+      </section>
     </div>
 
     <div class="custom-picker-screen" id="custom-picker-screen">
-      <div class="book-tabs" id="custom-picker-tabs"></div>
+      <div class="book-tabs" id="custom-picker-tabs" role="tablist" aria-label="직접 선택할 권"></div>
       <div class="custom-picker-panel" id="custom-picker-panel">
         <div class="custom-picker-toolbar" id="custom-picker-toolbar"></div>
         <div class="custom-picker-list" id="custom-picker-list"></div>
