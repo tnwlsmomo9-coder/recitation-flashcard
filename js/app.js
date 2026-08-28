@@ -3,6 +3,7 @@ import { getLastVerseId, setLastVerseId, getStatusMap, getVerseStatus, setVerseS
 import { toInitials } from "./initials.js";
 import { getMaskIndices, MASK_STAGE_COUNT, splitIntoWords } from "./practice.js";
 import { initStartHero, restartStartHero } from "./startHero.js";
+import { compareRecitation, isSpeechRecognitionSupported, startSpeechRecognition } from "./speechRecitation.js";
 
 const STATUS_LABEL = { memorized: "✓ 암기 완료", partial: "◐ 부분 암기", learning: "○ 더 익히기" };
 // 한 과 안에서 몇 번째 말씀인지 표시하는 원문자 — 과 번호와는 별개의 표시다.
@@ -53,6 +54,10 @@ const state = {
   pausedRandomSession: null
 };
 
+let activeSpeechSession = null;
+let speechSessionToken = 0;
+let speechStatusMessage = "";
+
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -63,6 +68,112 @@ function shuffle(arr) {
 
 function escapeHtml(str) {
   return str.replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+function closeSpeechResult() {
+  document.getElementById("speech-result-overlay").hidden = true;
+}
+
+function abortSpeechRecitation({ closeResult = true } = {}) {
+  speechSessionToken += 1;
+  activeSpeechSession?.abort();
+  activeSpeechSession = null;
+  speechStatusMessage = "";
+  if (closeResult) closeSpeechResult();
+}
+
+function isCurrentSpeechSession(token, verseId) {
+  return token === speechSessionToken
+    && state.queue[state.queueIndex] === verseId
+    && state.practiceMode === "initials"
+    && state.initialsStage === "hidden";
+}
+
+function showSpeechResult(transcript, comparison) {
+  const recommendationLabels = {
+    learning: "더 익히기",
+    partial: "부분 암기",
+    memorized: "암기 완료"
+  };
+  document.getElementById("speech-result-transcript").textContent = transcript;
+  document.getElementById("speech-result-score").textContent = `${Math.round(comparison.score * 100)}%`;
+  document.getElementById("speech-result-recommendation").textContent = recommendationLabels[comparison.recommendation];
+  const reviewText = document.getElementById("speech-result-review-text");
+  reviewText.innerHTML = "";
+  comparison.reviewSegments.forEach(segment => {
+    const element = document.createElement(segment.needsReview ? "mark" : "span");
+    if (segment.needsReview) element.className = "speech-review-mark";
+    element.textContent = segment.text;
+    reviewText.appendChild(element);
+  });
+  if (!comparison.reviewSegments.some(segment => segment.needsReview)) {
+    reviewText.classList.add("all-matched");
+    reviewText.textContent = "원문과 다시 확인할 부분이 없어요.";
+  } else {
+    reviewText.classList.remove("all-matched");
+  }
+  document.getElementById("speech-result-overlay").hidden = false;
+  document.getElementById("btn-speech-retry").focus();
+}
+
+function startInitialsSpeechRecitation() {
+  abortSpeechRecitation();
+  const verseId = state.queue[state.queueIndex];
+  const found = findVerseById(verseId);
+  if (!found || state.practiceMode !== "initials" || state.initialsStage !== "hidden") return;
+
+  if (!isSpeechRecognitionSupported()) {
+    speechStatusMessage = "이 브라우저에서는 음성 인식을 지원하지 않아요.";
+    renderCard();
+    return;
+  }
+
+  const token = speechSessionToken;
+  speechStatusMessage = "마이크 연결을 준비하고 있어요…";
+  renderCard();
+
+  try {
+    activeSpeechSession = startSpeechRecognition({
+      onStart() {
+        if (!isCurrentSpeechSession(token, verseId)) return;
+        speechStatusMessage = "듣고 있어요. 말씀을 암송해 주세요.";
+        renderCard();
+      },
+      onResult(alternatives) {
+        if (!isCurrentSpeechSession(token, verseId)) return;
+        const candidates = alternatives.map(transcript => ({
+          transcript,
+          comparison: compareRecitation(found.verse.text, transcript)
+        }));
+        const best = candidates.sort((a, b) => b.comparison.score - a.comparison.score)[0];
+        activeSpeechSession = null;
+        speechStatusMessage = "";
+        if (best) showSpeechResult(best.transcript, best.comparison);
+      },
+      onError(message) {
+        if (!isCurrentSpeechSession(token, verseId)) return;
+        activeSpeechSession = null;
+        speechStatusMessage = message;
+        renderCard();
+      },
+      onEnd() {
+        if (isCurrentSpeechSession(token, verseId)) activeSpeechSession = null;
+      }
+    });
+  } catch (_) {
+    if (!isCurrentSpeechSession(token, verseId)) return;
+    activeSpeechSession = null;
+    speechStatusMessage = "음성 인식을 시작하지 못했어요. 다시 시도해 주세요.";
+    renderCard();
+  }
+}
+
+function revealInitialsAnswer() {
+  abortSpeechRecitation();
+  state.practiceMode = "full";
+  state.initialsStage = "letters";
+  state.showRecitationHint = true;
+  renderCard();
 }
 
 function renderLessonVerseRef(ref) {
@@ -264,6 +375,7 @@ function enterLesson(bookId, lessonId, verseIndex = 0) {
 
 /* ---------- 암송 학습 화면 ---------- */
 function resetPracticeState() {
+  abortSpeechRecitation();
   clearTimeout(state.autoAdvanceTimer);
   state.practiceMode = "full";
   state.lineByLineStep = 1;
@@ -366,12 +478,17 @@ function renderProgressiveHtml(verse) {
 
 function renderInitialsHtml(verse) {
   if (state.initialsStage === "hidden") {
+    const unsupportedMessage = isSpeechRecognitionSupported()
+      ? ""
+      : "이 브라우저에서는 음성 인식을 지원하지 않아요.";
     return `
       <div class="initials-check">
         <div class="practice-feedback">말씀을 모두 떠올리며 암송해보세요</div>
-        <div class="practice-actions">
+        <div class="practice-actions initials-hidden-actions">
           <button type="button" class="btn btn-primary btn-chip" data-action="initials-reveal">전체 본문 확인</button>
+          <button type="button" class="btn btn-outline speech-start-btn" data-action="speech-start">음성으로 확인해보기</button>
         </div>
+        <div class="speech-live-status" aria-live="polite">${escapeHtml(speechStatusMessage || unsupportedMessage)}</div>
       </div>
     `;
   }
@@ -709,6 +826,7 @@ function resetWritingState() {
 
 function enterWriting() {
   if (!state.queue[state.queueIndex]) return;
+  abortSpeechRecitation();
   resetWritingState();
   showScreen("writing");
   renderWriting();
@@ -1226,6 +1344,7 @@ function init() {
   });
 
   document.getElementById("btn-back-toc").addEventListener("click", () => {
+    abortSpeechRecitation();
     if (state.mode === "random" && !state.singleVerseCheck) {
       openRangeModal();
       return;
@@ -1244,6 +1363,7 @@ function init() {
   });
   document.getElementById("recitation-mode-label").addEventListener("click", () => {
     if (state.mode !== "random") return;
+    abortSpeechRecitation();
     state.mode = "sequential";
     state.singleVerseCheck = false;
     state.pausedRandomSession = null;
@@ -1340,6 +1460,7 @@ function init() {
     const btn = e.target.closest(".practice-tab");
     if (!btn) return;
     e.stopPropagation();
+    abortSpeechRecitation();
     const mode = btn.dataset.mode;
     state.practiceMode = mode;
     // 탭을 직접 눌러 들어온 것이므로("이 루트"가 아니므로) 첫 글자→전체
@@ -1389,14 +1510,22 @@ function init() {
       state.revealedHints = new Set();
     } else if (action === "initials-check") {
       state.initialsStage = "hidden";
+    } else if (action === "speech-start") {
+      startInitialsSpeechRecitation();
+      return;
     } else if (action === "initials-reveal") {
       // 첫 글자 탭에서 "전체 본문 확인"을 누르면 전체 탭으로 넘어가고,
       // 이 경로로 왔을 때만 전체 탭 아래에 암송 상태 기록 안내가 뜬다.
-      state.practiceMode = "full";
-      state.initialsStage = "letters";
-      state.showRecitationHint = true;
+      revealInitialsAnswer();
+      return;
     }
     renderCard();
+  });
+
+  document.getElementById("btn-speech-retry").addEventListener("click", startInitialsSpeechRecitation);
+  document.getElementById("btn-speech-reveal").addEventListener("click", revealInitialsAnswer);
+  document.getElementById("speech-result-overlay").addEventListener("click", e => {
+    if (e.target.id === "speech-result-overlay") closeSpeechResult();
   });
 
   document.getElementById("btn-prev").addEventListener("click", e => {
@@ -1475,6 +1604,7 @@ function init() {
   // 말씀을 보고 있었는지는 목록의 연한보라색 표시로 확인할 수 있다).
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "hidden") return;
+    abortSpeechRecitation();
     const cardActive = document.getElementById("screen-card").classList.contains("active");
     const writingActive = document.getElementById("screen-writing").classList.contains("active");
     if (!cardActive && !writingActive) return;
